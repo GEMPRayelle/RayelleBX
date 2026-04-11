@@ -19,6 +19,7 @@ using HarmonyLib;
 using RayelleBX.Helpers;
 using RayelleBX.Patches;
 using System.Reflection;
+using RayelleBX.Config;
 
 namespace RayelleBX;
 
@@ -61,6 +62,18 @@ public class Plugin : BaseUnityPlugin
         // typeof(...)로 클래스를 지정하면 해당 클래스의 패치만 적용된다.
         _harmony.PatchAll(typeof(GameFieldDefaultUIEnablePatch));
         _harmony.PatchAll(typeof(SymbolRemovePatch));
+
+        if (PluginConfig.QuickMenuMacro)
+            _harmony.PatchAll(typeof(QuickMenuUIEnablePatch));
+
+        if (PluginConfig.CharRecoveryMacro)
+            _harmony.PatchAll(typeof(CharRecoveryUIEnablePatch));
+
+        if (PluginConfig.CharCostumeLogging)
+        {
+            CostumeConfig.EnsureFile();
+            _harmony.PatchAll(typeof(CharUIEnablePatch));
+        }
 
         Log.LogInfo("Harmony Patch Complete");
     }

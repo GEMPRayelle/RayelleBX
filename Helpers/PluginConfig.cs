@@ -25,7 +25,10 @@ public static class PluginConfig
         Path.Combine(Paths.PluginPath, "RayelleBX", "setting.cfg");
 
     // 기본값은 모두 활성화
-    public static bool OverwhelmIndicator { get; private set; } = true;
+    public static bool OverwhelmIndicator  { get; private set; } = true;
+    public static bool QuickMenuMacro      { get; private set; } = true;
+    public static bool CharRecoveryMacro   { get; private set; } = true;
+    public static bool CharCostumeLogging  { get; private set; } = true;
 
     /// <summary>
     /// setting.cfg를 읽어 설정값을 갱신한다.
@@ -60,11 +63,19 @@ public static class PluginConfig
                     case "OverwhelmIndicator":
                         OverwhelmIndicator = value.Equals("true", StringComparison.OrdinalIgnoreCase);
                         break;
-                    // 새 기능을 추가할 때 여기에 case를 추가한다
+                    case "QuickMenuMacro":
+                        QuickMenuMacro = value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                        break;
+                    case "CharRecoveryMacro":
+                        CharRecoveryMacro = value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                        break;
+                    case "CharCostumeLogging":
+                        CharCostumeLogging = value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                        break;
                 }
             }
 
-            Plugin.Log.LogInfo($"[PluginConfig] 로드 완료 — OverwhelmIndicator={OverwhelmIndicator}");
+            Plugin.Log.LogInfo($"[PluginConfig] 로드 완료 — OverwhelmIndicator={OverwhelmIndicator}, QuickMenuMacro={QuickMenuMacro}, CharRecoveryMacro={CharRecoveryMacro}, CharCostumeLogging={CharCostumeLogging}");
         }
         catch (Exception e)
         {
