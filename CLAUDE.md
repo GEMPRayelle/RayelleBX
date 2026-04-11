@@ -31,6 +31,21 @@ C:\Neowiz\Browndust2\Browndust2_10000001\BepInEx\plugins\RayelleBX\RayelleBX.dll
 
 ## 아키텍처
 
+### Harmony 패치 타입
+
+Harmony는 런타임에 타겟 메서드의 IL 코드 앞/뒤에 코드를 삽입한다. 이 프로젝트는 Postfix만 사용한다.
+
+| 타입 | 실행 시점 | 주요 용도 |
+|------|----------|----------|
+| Prefix | 원본 메서드 실행 **전** | 실행 차단, 파라미터 변경 |
+| **Postfix** | 원본 메서드 실행 **후** | 반환값·상태 읽기/수정 ← 이 프로젝트 |
+| Transpiler | 원본 IL 자체 변경 | 고급 패치 |
+
+Postfix 파라미터 규칙:
+- `__instance` : 패치된 메서드의 `this`
+- `__result` : 반환값 (ref로 수정 가능)
+- `__0`, `__1`, ... : 원본 메서드의 파라미터 (이름 난독화 시 순서 기반 참조)
+
 ### 패치 등록 방식
 
 `Plugin.cs`의 `Awake()`에서 두 가지 방식으로 패치를 등록한다:
@@ -60,17 +75,27 @@ C:\Neowiz\Browndust2\Browndust2_10000001\BepInEx\plugins\RayelleBX\RayelleBX.dll
 - `TalentSkillManager`의 압도 스킬 메서드 Postfix로 트리거
 - 필드 내 `Symbol_` 이름의 `FieldMonsterController` 오브젝트를 탐색
 - `DirectionFieldMark0`을 복제해 빨간 방향 인디케이터 생성 (`Init()` 리플렉션 호출)
-- `_isRunning` 플래그로 중복 실행 방지
+- `_isRunning` 플래그로 중복 실행 방지 (압도 스킬 연속 발동 시 코루틴 하나만 실행)
 - `FindObjectsOfType<FieldMonsterController>()` 사용 — `FindObjectsOfType<GameObject>()`는 너무 무겁다
+- `activeIndicators` 딕셔너리(`GameObject → DirectionFieldIndicator`)로 개별 추적 — 코루틴 도중 몬스터가 제거될 수 있기 때문
+- 코루틴 안에서 딕셔너리 직접 수정 시 예외 발생 → `toRemove` 리스트를 별도로 만들어 순회 후 일괄 삭제
 
 **심볼 카운터 UI** (`Patches/GameFieldDefaultUIEnablePatch.cs`)
-- `GameFieldDefaultUI.LoadFieldComplete` Postfix
+- `GameFieldDefaultUI.LoadFieldComplete` Postfix — 필드가 완전히 로드된 직후 실행
 - 필드 진입 시 `Layout - FieldReward`에 심볼 몬스터 수 표시 (아이콘 + 텍스트)
 - 아이콘 파일: `BepInEx\plugins\RayelleBX\Resources\symbol_monster.png`
+- UI 계층 구조:
+  ```
+  Layout - FieldReward
+    └─ Button - Item6          ← 이 패치가 생성
+         ├─ Image - Icon        (symbol_monster.png를 런타임 로드한 Sprite)
+         └─ Text - Count        (TextMeshProUGUI, ComponentHelper.CreateTMPro 사용)
+  ```
 
 **심볼 제거 업데이트** (`Patches/SymbolRemovePatch.cs`)
 - `FieldMonsterController.RemoveMonster` Postfix
 - 몬스터 제거 시 카운터 텍스트 업데이트 또는 UI 제거
+- `GameFieldDefaultUIEnablePatch`와 역할 분담: 전자는 필드 진입 시 UI **생성**, 후자는 몬스터 제거마다 UI **갱신/삭제**
 
 ### 리플렉션 패턴
 
@@ -86,5 +111,6 @@ initMethod.Invoke(indicator, new object[] { playerTransform, monster, enumValue 
 
 ### 기타
 
-- `System/Runtime/CompilerServices/RefSafetyRulesAttribute.cs` — C# 최신 언어 기능 사용 시 필요한 컴파일러 내부 속성. `[Embedded]`나 `using Microsoft.CodeAnalysis` 없이 유지
-- `ComponentHelper.CreateTMPro()` — `TextMeshProUGUI` 생성 + `FontLocalizer` 설정. 리플렉션 실패 시 기본 폰트로 폴백하며 Warning 로그만 출력
+- `System/Runtime/CompilerServices/RefSafetyRulesAttribute.cs` — C# 최신 언어 기능 사용 시 컴파일러가 내부적으로 삽입하려는 속성. .NET Framework 4.8 환경에는 기본 내장되지 않아 직접 선언해야 한다. `[Embedded]`나 `using Microsoft.CodeAnalysis` 없이 유지
+- `AssemblyInfo.cs`의 `SkipVerification = true` — BepInEx 플러그인은 게임 DLL의 private/internal 멤버에 접근해야 하므로 .NET CLR의 IL 검증을 건너뛴다. 런타임 패치 환경에서는 일반적인 설정이다.
+- `ComponentHelper.CreateTMPro()` — `TextMeshProUGUI` 생성 + `FontLocalizer` 설정. 게임은 언어 설정에 따라 폰트를 동적으로 교체하는 `FontLocalizer` 컴포넌트를 사용하므로, 플러그인에서 TMP를 직접 생성할 때도 `FontLocalizer`를 함께 붙여야 폰트가 깨지지 않는다. 리플렉션 실패 시 기본 폰트로 폴백하며 Warning 로그만 출력
