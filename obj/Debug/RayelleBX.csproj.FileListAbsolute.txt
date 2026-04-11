@@ -1,0 +1,6 @@
+C:\Users\equat\Desktop\Browndust2\Plugins\RayelleBX\obj\Debug\RayelleBX.csproj.AssemblyReference.cache
+C:\Users\equat\Desktop\Browndust2\Plugins\RayelleBX\obj\Debug\RayelleBX.csproj.CoreCompileInputs.cache
+C:\Users\equat\Desktop\Browndust2\Plugins\RayelleBX\bin\Debug\RayelleBX.dll
+C:\Users\equat\Desktop\Browndust2\Plugins\RayelleBX\bin\Debug\RayelleBX.pdb
+C:\Users\equat\Desktop\Browndust2\Plugins\RayelleBX\obj\Debug\RayelleBX.dll
+C:\Users\equat\Desktop\Browndust2\Plugins\RayelleBX\obj\Debug\RayelleBX.pdb
