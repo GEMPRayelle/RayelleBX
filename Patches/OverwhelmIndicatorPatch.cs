@@ -20,6 +20,7 @@
 
 using HarmonyLib;
 using Proto.Design.common;
+using RayelleBX.Helpers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -85,6 +86,9 @@ public class OverwhelmIndicatorPatch
     {
         try
         {
+            // setting.cfg에서 비활성화됐으면 아무것도 하지 않는다
+            if (!PluginConfig.OverwhelmIndicator) return;
+
             if (_isRunning) return;
 
             Plugin.Log.LogInfo("[OverwhelmIndicatorPatch] Postfix 호출됨");

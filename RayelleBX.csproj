@@ -96,6 +96,7 @@
     <Compile Include="MyPluginInfo.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Helpers\ComponentHelper.cs" />
+    <Compile Include="Helpers\PluginConfig.cs" />
     <Compile Include="Patches\OverwhelmIndicatorPatch.cs" />
     <Compile Include="Patches\GameFieldDefaultUIEnablePatch.cs" />
     <Compile Include="Patches\SymbolRemovePatch.cs" />
@@ -107,6 +108,8 @@
       <DeployDir>C:\Neowiz\Browndust2\Browndust2_10000001\BepInEx\plugins\RayelleBX\</DeployDir>
     </PropertyGroup>
     <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(DeployDir)" />
+    <!-- setting.cfg는 이미 존재하면 덮어쓰지 않는다 (사용자 설정 보존) -->
+    <Copy SourceFiles="setting.cfg" DestinationFolder="$(DeployDir)" Condition="!Exists('$(DeployDir)setting.cfg')" />
     <Message Text="배포 완료: $(DeployDir)$(AssemblyName).dll" Importance="high" />
   </Target>
 </Project>

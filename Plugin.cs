@@ -16,6 +16,7 @@
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
+using RayelleBX.Helpers;
 using RayelleBX.Patches;
 using System.Reflection;
 
@@ -39,6 +40,9 @@ public class Plugin : BaseUnityPlugin
     {
         Log = base.Logger;
         Log.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
+
+        // setting.cfg를 읽어 각 기능의 활성화 여부를 결정한다
+        PluginConfig.Load();
 
         // Harmony 인스턴스를 GUID로 생성. 같은 GUID로 여러 번 패치하면 중복 적용되므로 주의.
         _harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
