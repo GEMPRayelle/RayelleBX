@@ -18,6 +18,7 @@ using BepInEx.Logging;
 using HarmonyLib;
 using RayelleBX.Helpers;
 using RayelleBX.Patches;
+using System;
 using System.Reflection;
 using RayelleBX.Config;
 
@@ -58,23 +59,42 @@ public class Plugin : BaseUnityPlugin
             _harmony.Patch(method, postfix: postfix);
 
         // --- 패치 등록 방식 2: 속성 기반 자동 패치 ---
-        // [HarmonyPatch] 속성이 붙은 클래스는 PatchAll()로 한 번에 등록할 수 있다.
-        // typeof(...)로 클래스를 지정하면 해당 클래스의 패치만 적용된다.
-        _harmony.PatchAll(typeof(GameFieldDefaultUIEnablePatch));
-        _harmony.PatchAll(typeof(SymbolRemovePatch));
+        // PatchAll은 대상 메서드를 찾지 못하면 예외를 던질 수 있다.
+        // 각각 try-catch로 보호해 한 곳에서 실패해도 나머지 패치는 계속 등록된다.
+        TryPatchAll(_harmony, typeof(GameFieldDefaultUIEnablePatch));
+        TryPatchAll(_harmony, typeof(SymbolRemovePatch));
 
         if (PluginConfig.QuickMenuMacro)
-            _harmony.PatchAll(typeof(QuickMenuUIEnablePatch));
+            TryPatchAll(_harmony, typeof(QuickMenuUIEnablePatch));
 
         if (PluginConfig.CharRecoveryMacro)
-            _harmony.PatchAll(typeof(CharRecoveryUIEnablePatch));
+            TryPatchAll(_harmony, typeof(CharRecoveryUIEnablePatch));
 
         if (PluginConfig.CharCostumeLogging)
         {
             CostumeConfig.EnsureFile();
-            _harmony.PatchAll(typeof(CharUIEnablePatch));
+            CharUIEnablePatch.ApplyPatches(_harmony);
         }
 
+        if (PluginConfig.InfiniteGachaMacro)
+            GachaMacroUIEnablePatch.ApplyPatches(_harmony);
+
         Log.LogInfo("Harmony Patch Complete");
+    }
+
+    /// <summary>
+    /// PatchAll을 try-catch로 감싼다.
+    /// 대상 메서드를 찾지 못하거나 패치 중 예외가 발생해도 나머지 패치 등록이 계속된다.
+    /// </summary>
+    private static void TryPatchAll(Harmony harmony, Type patchClass)
+    {
+        try
+        {
+            harmony.PatchAll(patchClass);
+        }
+        catch (Exception e)
+        {
+            Log.LogError($"[Plugin] PatchAll 실패: {patchClass.Name} — {e.Message}");
+        }
     }
 }

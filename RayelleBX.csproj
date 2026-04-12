@@ -107,6 +107,7 @@
     <Compile Include="Patches\QuickMenuUIEnablePatch.cs" />
     <Compile Include="Patches\CharRecoveryUIEnablePatch.cs" />
     <Compile Include="Patches\CharUIEnablePatch.cs" />
+    <Compile Include="Patches\GachaMacroUIEnablePatch.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 

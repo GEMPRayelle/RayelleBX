@@ -1,7 +1,8 @@
 // CharUIEnablePatch.cs — 코스튬 탭 열 때마다 코스튬 ID·이름을 CSV에 기록하는 패치.
 //
 // [패치 대상]
-// CharUI.SetUI() — 캐릭터 UI가 열릴 때 호출된다.
+// CharUI.ShowUI() (파라미터 없는 오버로드) — 코스튬 탭이 열릴 때 호출된다.
+// 구버전 SetUI() 는 게임 업데이트 후 ShowUI() 로 이름이 변경됨.
 //
 // [동작 흐름]
 // 1. "Tab - 2 - Costume" 하위의 CharCostumeUI 컴포넌트를 찾는다
@@ -15,10 +16,9 @@
 // 코스튬 데이터의 CostumeID 프로퍼티 : ὪὫὫὢὩὦὤὪὧὫὡ (v2026-04-11 기준)
 // 게임 업데이트로 이름이 바뀌면 Exception을 catch해 로그 출력 후 무시한다.
 //
-// [__0 파라미터 생략]
-// 원본 SetUI()의 첫 번째 파라미터 타입이 난독화 타입(ὬὡὤὡὯὦὫὫὫὥὭ)이다.
-// Postfix에서 사용하지 않으므로 파라미터 자체를 선언에서 제거한다.
-// Harmony는 선언된 파라미터만 주입하므로 생략해도 정상 동작한다.
+// [패치 등록]
+// [HarmonyPatch] 속성 없이 ApplyPatches()에서 수동 등록한다.
+// ShowUI 오버로드가 여러 개이므로 파라미터 없는 버전을 명시적으로 선택한다.
 
 using HarmonyLib;
 using RayelleBX.Config;
@@ -29,9 +29,28 @@ using UnityEngine;
 
 namespace RayelleBX.Patches;
 
-[HarmonyPatch(typeof(CharUI), "SetUI")]
 public class CharUIEnablePatch
 {
+    public static void ApplyPatches(Harmony harmony)
+    {
+        try
+        {
+            // ShowUI() — 파라미터 없는 오버로드 (Type[] {} 로 명시)
+            MethodInfo target = AccessTools.Method(typeof(CharUI), "ShowUI", new System.Type[] { });
+            if (target == null)
+            {
+                Plugin.Log.LogWarning("[CharUI] ShowUI() 메서드를 찾을 수 없음");
+                return;
+            }
+            harmony.Patch(target, postfix: new HarmonyMethod(typeof(CharUIEnablePatch), nameof(Postfix)));
+            Plugin.Log.LogInfo("[CharUI] ShowUI() 패치 등록");
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogError($"[CharUI] 패치 실패: {e.Message}");
+        }
+    }
+
     // __instance : 패치된 CharUI 인스턴스
     private static void Postfix(CharUI __instance)
     {
