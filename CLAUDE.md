@@ -50,7 +50,7 @@ Postfix 파라미터 규칙:
 
 `Plugin.cs`의 `Awake()`에서 두 가지 방식으로 패치를 등록한다:
 
-1. **`[HarmonyPatch]` 속성 방식** — `GameFieldDefaultUIEnablePatch`, `SymbolRemovePatch`는 클래스에 속성이 있으므로 `_harmony.PatchAll(typeof(...))` 사용
+1. **`[HarmonyPatch]` 속성 방식** — `GameFieldDefaultUIEnablePatch`, `SymbolRemovePatch`, `QuickMenuUIEnablePatch`, `CharRecoveryUIEnablePatch`, `CharUIEnablePatch`는 클래스에 속성이 있으므로 `_harmony.PatchAll(typeof(...))` 사용
 2. **수동 패치 방식** — `OverwhelmIndicatorPatch`는 `[HarmonyPatch]` 속성 없이 `GetTargetMethods()`로 런타임에 대상을 탐색한 뒤 `_harmony.Patch(method, postfix: postfix)` 직접 호출
 
 > **중요**: `OverwhelmIndicatorPatch`에 `TargetMethods()` (HarmonyX 자동 감지 이름)를 쓰면 `PatchAll` 시 이중 호출된다. 반드시 `GetTargetMethods()`로 이름을 유지하고 `Plugin.cs`에서 수동 패치할 것.
@@ -97,6 +97,50 @@ Postfix 파라미터 규칙:
 - 몬스터 제거 시 카운터 텍스트 업데이트 또는 UI 제거
 - `GameFieldDefaultUIEnablePatch`와 역할 분담: 전자는 필드 진입 시 UI **생성**, 후자는 몬스터 제거마다 UI **갱신/삭제**
 
+**퀵메뉴 대화 매크로** (`Patches/QuickMenuUIEnablePatch.cs`)
+- `QuickMenuUI.SetMenu` Postfix — 퀵메뉴가 열릴 때마다 실행
+- 퀵메뉴 하단 버튼 목록에 보라색(`UISprite.color`) 매크로 버튼 추가
+- 버튼 클릭 시 `TalkMacroLoop` 코루틴 시작: 대화 버튼 클릭 → BalloonScriptUI Skip 버튼 대기 → 클릭 반복
+- `_listenerBound` 플래그로 리스너 중복 등록 방지 — `SetMenu`는 퀵메뉴가 열릴 때마다 재호출되기 때문
+- Q키 또는 오버레이 종료 버튼으로 중단 (`ComponentHelper.IsMacroRunning = false`)
+
+**자동 먹이기 매크로** (`Patches/CharRecoveryUIEnablePatch.cs`)
+- `CharRecoveryUI.SetUI` Postfix — 회복 탭이 열릴 때 실행
+- 기존 Auto 버튼 옆에 "자동 먹이기" 버튼 추가 (`HorizontalLayoutGroup`으로 나란히 배치)
+- `EatMacroLoop` 코루틴: 뒤로가기 → 연결 → 코스튬1 선택 → 코스튬 연결 → 코스튬0 선택 → 코스튬 연결 → 회복 2회 → 먹이기 N회 → 먹기 순서 자동화
+- `GetFeedCount()`: `Text - TotalHealth` / `Text - Health` TMP 텍스트를 파싱해 `(total - current) / 2` 회 먹이기 아이템 클릭 횟수 산출
+- Q키 또는 오버레이 종료 버튼으로 중단
+
+**코스튬 ID 매핑 기록** (`Patches/CharUIEnablePatch.cs`)
+- `CharUI.SetUI` Postfix — 캐릭터 UI가 열릴 때 실행
+- 리플렉션으로 `CharCostumeUI`의 난독화 필드(`ὩὠὬὣὥὮὦὢὩὧὭ`)에서 코스튬 데이터 객체를 꺼내고, 난독화 프로퍼티(`ὪὫὫὢὩὦὤὪὧὫὡ`)로 CostumeID를 읽는다
+- `{캐릭터명}_{코스튬명}` 형태로 `CostumeMapping.csv`에 누적 저장
+- 리플렉션 실패 시 Exception을 catch하여 로그 출력 후 무시 (크래시 방지)
+
+### 헬퍼 / 공통 인프라
+
+**UIHelper** (`Helpers/UIHelper.cs`)
+- `FindOrLog(path)` — `GameObject.Find` 실패 시 로그 출력
+- `TryInvokeButton(path)` — 버튼을 찾아 `onClick.Invoke()`, 실패 시 false 반환
+- `IsExistAndActive(path)` — 오브젝트 존재 여부 + `activeSelf` 확인 (매크로 루프 대기 조건)
+
+**CoroutineHelper** (`Helpers/CoroutineHelper.cs`) + **CoroutineRunner** (`Components/CoroutineRunner.cs`)
+- `GetOrCreateRunner()` — `MacroCoroutineRunner` GameObject에 `CoroutineRunner`를 붙여 반환, `DontDestroyOnLoad`로 씬 전환 시 유지
+- `CoroutineRunner.Update()` — 매 프레임 Q키 감지 → `ComponentHelper.IsMacroRunning = false`로 매크로 중단
+- 패치 클래스는 MonoBehaviour가 아니므로 코루틴을 직접 시작할 수 없어 Runner에 위임하는 패턴
+
+**ComponentHelper 확장** (`Helpers/ComponentHelper.cs`)
+- `IsMacroRunning` (static bool) — 매크로 실행 중 여부 플래그. CoroutineRunner·패치 클래스가 공유
+- `CreateRectTransForm(go)` — anchorMin/Max를 0/1로 설정해 부모 전체를 채우는 RectTransform 추가
+- `CreateOverlay(parent)` — 반투명 검정 오버레이 생성. "자동 클릭 중..." 텍스트 + 빨간 종료 버튼 포함. 종료 버튼은 QuickMenu·BalloonScript 오버레이를 비활성화하고 `IsMacroRunning = false`
+
+**CostumeConfig** (`Config/CostumeConfig.cs`)
+- CSV 경로: `BepInEx\plugins\RayelleBX\Resources\CostumeMapping.csv`
+- `EnsureFile()` — 디렉터리·파일 없으면 생성 (헤더: `CostumeID,CostumeName`)
+- `AppendMapping(id, name)` — 한 줄 추가
+- `LoadAllCostumes()` — 저장된 CostumeID를 `HashSet<int>`로 반환
+- `Split(new char[]{ ',' }, 2)` — .NET Framework 4.8에서는 `Split(char, int)` 오버로드 없음
+
 ### 리플렉션 패턴
 
 ```csharp
@@ -114,3 +158,5 @@ initMethod.Invoke(indicator, new object[] { playerTransform, monster, enumValue 
 - `System/Runtime/CompilerServices/RefSafetyRulesAttribute.cs` — C# 최신 언어 기능 사용 시 컴파일러가 내부적으로 삽입하려는 속성. .NET Framework 4.8 환경에는 기본 내장되지 않아 직접 선언해야 한다. `[Embedded]`나 `using Microsoft.CodeAnalysis` 없이 유지
 - `AssemblyInfo.cs`의 `SkipVerification = true` — BepInEx 플러그인은 게임 DLL의 private/internal 멤버에 접근해야 하므로 .NET CLR의 IL 검증을 건너뛴다. 런타임 패치 환경에서는 일반적인 설정이다.
 - `ComponentHelper.CreateTMPro()` — `TextMeshProUGUI` 생성 + `FontLocalizer` 설정. 게임은 언어 설정에 따라 폰트를 동적으로 교체하는 `FontLocalizer` 컴포넌트를 사용하므로, 플러그인에서 TMP를 직접 생성할 때도 `FontLocalizer`를 함께 붙여야 폰트가 깨지지 않는다. 리플렉션 실패 시 기본 폰트로 폴백하며 Warning 로그만 출력
+- `CharUIEnablePatch`의 `__0` 파라미터 (난독화 타입 `ὬὡὤὡὯὦὫὫὫὥὭ`) — Postfix 시그니처에서 사용하지 않으면 생략 가능. Harmony는 선언된 파라미터만 주입하므로 타입을 모를 때는 파라미터 자체를 제거한다
+- `string.Split(char, int)` — .NET Core/.NET 5+ 전용. Framework 4.8에서는 `Split(new char[]{ delimiter }, count)` 형태로 대체해야 한다
