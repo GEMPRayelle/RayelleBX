@@ -18,7 +18,11 @@
 // (최대 - 현재) / 2 = 먹이기 아이템 클릭 횟수를 산출한다.
 // 아이템 1개당 HP 2 회복을 전제로 한다.
 //
-// [Q키 또는 오버레이 종료 버튼으로 중단]
+// [중단 방법]
+// Q키: CoroutineRunner.Update()에서 감지 → IsMacroRunning = false
+// 오버레이 종료 버튼: 매크로 시작 시 CharRecoveryUI 위에 반투명 오버레이 생성
+//   → 버튼 클릭 시 오버레이 숨김 + IsMacroRunning = false
+// 루프 자연 종료 시에도 오버레이를 숨긴다.
 
 using HarmonyLib;
 using RayelleBX.Helpers;
@@ -112,7 +116,16 @@ public class CharRecoveryUIEnablePatch
             Plugin.Log.LogInfo("Macro already running");
             return;
         }
-        CoroutineHelper.GetOrCreateRunner().StartCoroutine(EatMacroLoop());
+        ComponentHelper.IsMacroRunning = true;
+        ShowMacroOverlay(instance);
+        CoroutineHelper.GetOrCreateRunner().StartCoroutine(EatMacroLoop(instance));
+    }
+
+    private static void ShowMacroOverlay(CharRecoveryUI instance)
+    {
+        // 기존 오버레이가 있으면 재사용, 없으면 ComponentHelper로 새로 생성
+        (instance.transform.Find("MacroOverlay")?.gameObject
+            ?? ComponentHelper.CreateOverlay(instance)).SetActive(true);
     }
 
     /// <summary>
@@ -120,40 +133,41 @@ public class CharRecoveryUIEnablePatch
     /// UI 버튼을 순서대로 클릭한다. 각 단계가 실패하면 break로 루프를 종료한다.
     /// IsMacroRunning이 false가 되면 다음 사이클 시작 전에 종료된다.
     /// </summary>
-    private static IEnumerator EatMacroLoop()
+    private static IEnumerator EatMacroLoop(CharRecoveryUI instance)
     {
-        ComponentHelper.IsMacroRunning = true;
-        while (ComponentHelper.IsMacroRunning && StepClickBack())
+        while (ComponentHelper.IsMacroRunning)
         {
+            if (!StepClickBack()) break;
             yield return new WaitForSeconds(0.5f);
-            if (!StepClickConnect()) break;
+            if (!ComponentHelper.IsMacroRunning || !StepClickConnect()) break;
             yield return new WaitForSeconds(0.5f);
             // 코스튬1 → 연결 활성화 → 코스튬0 → 연결 활성화 순으로 두 코스튬 연결
-            if (!StepClickCostumeItem1()) break;
+            if (!ComponentHelper.IsMacroRunning || !StepClickCostumeItem1()) break;
             yield return new WaitForSeconds(0.5f);
-            if (!StepClickCostumeConnectEnable()) break;
+            if (!ComponentHelper.IsMacroRunning || !StepClickCostumeConnectEnable()) break;
             yield return new WaitForSeconds(0.5f);
-            if (!StepClickConnect()) break;
+            if (!ComponentHelper.IsMacroRunning || !StepClickConnect()) break;
             yield return new WaitForSeconds(0.5f);
-            if (!StepClickCostumeItem0()) break;
+            if (!ComponentHelper.IsMacroRunning || !StepClickCostumeItem0()) break;
             yield return new WaitForSeconds(0.5f);
-            if (!StepClickCostumeConnectEnable()) break;
+            if (!ComponentHelper.IsMacroRunning || !StepClickCostumeConnectEnable()) break;
             yield return new WaitForSeconds(0.5f);
             // 회복 버튼을 2회 클릭해 회복 탭으로 이동
-            if (!StepClickRecovery()) break;
+            if (!ComponentHelper.IsMacroRunning || !StepClickRecovery()) break;
             yield return new WaitForSeconds(0.5f);
-            if (!StepClickRecovery()) break;
+            if (!ComponentHelper.IsMacroRunning || !StepClickRecovery()) break;
             yield return new WaitForSeconds(0.5f);
 
             // 현재 HP 부족분만큼 먹이기 아이템 클릭 (아이템 1개 = HP +2)
             int feedCount = GetFeedCount();
-            for (int i = 0; i < feedCount && StepClickFeedItem(); i++)
+            for (int i = 0; i < feedCount && ComponentHelper.IsMacroRunning && StepClickFeedItem(); i++)
                 yield return new WaitForSeconds(0.13f);
 
-            if (!StepClickEat()) break;
+            if (!ComponentHelper.IsMacroRunning || !StepClickEat()) break;
             yield return new WaitForSeconds(0.5f);
         }
         ComponentHelper.IsMacroRunning = false;
+        instance.transform.Find("MacroOverlay")?.gameObject.SetActive(false);
     }
 
     /// <summary>

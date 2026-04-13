@@ -133,9 +133,9 @@ public static class ComponentHelper
         stopGo.AddComponent<Button>().onClick.AddListener((UnityAction)(() =>
         {
             Plugin.Log.LogInfo("Macro stopped");
-            // QuickMenu와 BalloonScript 두 곳에 생성된 오버레이를 모두 비활성화
-            GameObject.Find("Singleton (DontDestroy)/AppManager/UI/QuickMenuUI(Clone)")
-                ?.transform.Find("MacroOverlay")?.gameObject.SetActive(false);
+            // 이 오버레이 자신을 숨긴다 (클로저로 overlay 직접 참조)
+            overlay.SetActive(false);
+            // BalloonScriptUI 오버레이도 함께 숨긴다 (QuickMenu 매크로 보조 오버레이)
             GameObject.Find("Singleton (DontDestroy)/AppManager/UI/BalloonScriptUI(Clone)")
                 ?.transform.Find("MacroOverlay")?.gameObject.SetActive(false);
             // 플래그를 false로 → 각 코루틴의 while(IsMacroRunning) 조건이 false가 되어 종료
