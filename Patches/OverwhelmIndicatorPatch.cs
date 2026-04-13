@@ -20,6 +20,7 @@
 
 using HarmonyLib;
 using Proto.Design.common;
+using RayelleBX.Components;
 using RayelleBX.Helpers;
 using System;
 using System.Collections;
@@ -38,6 +39,18 @@ public class OverwhelmIndicatorPatch
     // 코루틴 중복 실행 방지 플래그.
     // 압도 스킬이 연속으로 발동돼도 코루틴이 하나만 실행되도록 보장한다.
     private static bool _isRunning = false;
+
+    // 실행 중인 코루틴 참조와 호스트 MonoBehaviour.
+    // ClearAndDestroyIndicators()에서 StopCoroutine으로 명시 중단하기 위해 보관한다.
+    // 지역 이동 시 TalentSkillManager 인스턴스가 유지되면 이전 코루틴이 계속 살아있어
+    // 새 코루틴의 activeIndicators와 _isRunning 플래그를 덮어쓰는 버그를 막기 위함이다.
+    private static Coroutine _activeCoroutine = null;
+    private static MonoBehaviour _coroutineHost = null;
+
+    // 압도 버프 만료 시각 (Time.time 기준).
+    // 마법진 등으로 필드를 이동하면 게임은 압도가 이미 활성 상태이므로 스킬 메서드를 재호출하지 않는다.
+    // 이 값으로 버프가 아직 남아 있는지 판단해 새 필드 진입 시 코루틴을 자동 재시작한다.
+    private static float _overwhelmEndTime = 0f;
 
     /// <summary>
     /// Harmony가 패치할 TalentSkillManager의 메서드 목록을 반환한다.
@@ -115,9 +128,11 @@ public class OverwhelmIndicatorPatch
             }
 
             Plugin.Log.LogInfo($"[OverwhelmIndicatorPatch] 코루틴 시작 (duration={duration})");
+            _overwhelmEndTime = Time.time + duration;
             _isRunning = true;
+            _coroutineHost = __instance;
             // TalentSkillManager는 MonoBehaviour이므로 StartCoroutine을 직접 호출할 수 있다
-            __instance.StartCoroutine(UpdateDirectionRoutine(playerTransform, duration, 0.3f, target));
+            _activeCoroutine = __instance.StartCoroutine(UpdateDirectionRoutine(playerTransform, duration, 0.3f, target));
         }
         catch (Exception e)
         {
@@ -129,9 +144,23 @@ public class OverwhelmIndicatorPatch
     /// <summary>
     /// 모든 활성 인디케이터를 제거하고 상태를 초기화한다.
     /// 새 필드에 진입할 때 GameFieldDefaultUIEnablePatch에서 호출한다.
+    ///
+    /// 이전 코루틴을 명시적으로 StopCoroutine 한다.
+    /// TalentSkillManager가 씬 전환 후에도 살아있을 경우,
+    /// 이전 코루틴이 계속 실행되다가 duration 만료 시 _isRunning = false 및
+    /// activeIndicators.Clear()를 덮어써 새 필드의 인디케이터를 망가뜨리는 버그를 방지한다.
     /// </summary>
     public static void ClearAndDestroyIndicators()
     {
+        // 기존 코루틴을 명시적으로 중단
+        if (_coroutineHost != null && _activeCoroutine != null)
+        {
+            try { _coroutineHost.StopCoroutine(_activeCoroutine); }
+            catch (Exception) { /* 호스트가 이미 파괴된 경우 무시 */ }
+        }
+        _activeCoroutine = null;
+        _coroutineHost = null;
+
         foreach (DirectionFieldIndicator indicator in activeIndicators.Values)
         {
             if (indicator != null && indicator.gameObject != null)
@@ -139,6 +168,38 @@ public class OverwhelmIndicatorPatch
         }
         activeIndicators.Clear();
         _isRunning = false;
+    }
+
+    /// <summary>
+    /// 새 필드 진입 시 압도 버프가 아직 활성 상태이면 코루틴을 재시작한다.
+    /// GameFieldDefaultUIEnablePatch.Postfix()에서 ClearAndDestroyIndicators() 직후 호출한다.
+    ///
+    /// 마법진 등으로 필드를 이동하면 게임은 압도 스킬 메서드를 재호출하지 않는다.
+    /// (버프가 이미 걸려 있어 중복 발동으로 처리하기 때문)
+    /// _overwhelmEndTime과 Time.time을 비교해 남은 시간이 있으면 새 필드 기준으로 코루틴을 다시 건다.
+    ///
+    /// host(GameFieldDefaultUI)는 필드 로드 중 부모가 비활성화 상태일 수 있어
+    /// StartCoroutine이 예외 없이 실패한다.
+    /// CoroutineHelper.GetOrCreateRunner()는 DontDestroyOnLoad로 항상 활성화된 Runner이므로
+    /// 코루틴이 확실히 실행된다.
+    /// </summary>
+    /// <param name="target">인디케이터 부모 오브젝트 (Layout - FieldReward)</param>
+    public static void RestartIfStillActive(GameObject target)
+    {
+        if (!PluginConfig.OverwhelmIndicator) return;
+        if (_isRunning) return;
+
+        float remaining = _overwhelmEndTime - Time.time;
+        if (remaining <= 0f) return;
+
+        GameObject playerObj = GameObject.Find("GameFieldManager(Clone)/CharGroup/Player");
+        if (playerObj == null) return;
+
+        MonoBehaviour runner = CoroutineHelper.GetOrCreateRunner();
+        Plugin.Log.LogInfo($"[OverwhelmIndicatorPatch] 필드 이동 후 압도 재시작 (remaining={remaining:F1}s)");
+        _isRunning = true;
+        _coroutineHost = runner;
+        _activeCoroutine = runner.StartCoroutine(UpdateDirectionRoutine(playerObj.transform, remaining, 0.3f, target));
     }
 
     /// <summary>
@@ -290,6 +351,8 @@ public class OverwhelmIndicatorPatch
                 UnityEngine.Object.Destroy(indicator.gameObject);
         }
         activeIndicators.Clear();
+        _activeCoroutine = null;
+        _coroutineHost = null;
         _isRunning = false;
     }
 }

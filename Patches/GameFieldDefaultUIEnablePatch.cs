@@ -51,6 +51,10 @@ public class GameFieldDefaultUIEnablePatch
             }
             Plugin.Log.LogInfo("[GameFieldDefaultUIEnablePatch] fieldReward 찾음");
 
+            // 마법진 등으로 필드를 이동했을 때 압도 버프가 아직 활성 상태이면 인디케이터를 재시작한다.
+            // 이미 활성인 스킬은 게임이 재발동하지 않아 Postfix가 다시 불리지 않기 때문이다.
+            OverwhelmIndicatorPatch.RestartIfStillActive(fieldReward);
+
             // 이전 실행에서 생성한 아이템이 남아있으면 제거 후 새로 만든다
             Transform existingItem = fieldReward.transform.Find("Button - Item6");
             if (existingItem != null)
