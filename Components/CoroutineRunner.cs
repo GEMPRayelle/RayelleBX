@@ -19,10 +19,12 @@ public class CoroutineRunner : MonoBehaviour
 {
     private void Update()
     {
-        // 매크로 실행 중일 때만 Q키를 감지한다 (불필요한 조건 분기 최소화)
-        if (Input.GetKeyDown(KeyCode.Q) && ComponentHelper.IsMacroRunning)
+        // 매크로 실행 중일 때만 중단 키를 감지한다 (불필요한 조건 분기 최소화)
+        // ESC: 게임이 UI를 닫기 전에 매크로를 먼저 중단시켜 잘못된 상태에서 버튼 invoke 방지
+        if (!ComponentHelper.IsMacroRunning) return;
+        if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.Escape))
         {
-            Plugin.Log.LogInfo("[CoroutineRunner] Q키 감지 → 매크로 중단");
+            Plugin.Log.LogInfo("[CoroutineRunner] 중단 키 감지 → 매크로 중단");
             ComponentHelper.IsMacroRunning = false;
         }
     }

@@ -135,39 +135,54 @@ public class CharRecoveryUIEnablePatch
     /// </summary>
     private static IEnumerator EatMacroLoop(CharRecoveryUI instance)
     {
-        while (ComponentHelper.IsMacroRunning)
+        // 매크로 진행 중 여부 + instance 파괴 감지
+        // activeInHierarchy는 체크하지 않는다 — 매크로 자체가 회복 탭 밖으로 이동하므로
+        // CharRecoveryUI가 일시적으로 비활성화되는 것은 정상 동작이다.
+        // ESC/Q키에 의한 UI 강제 닫힘은 CoroutineRunner가 IsMacroRunning = false로 처리한다.
+        bool ShouldContinue() =>
+            ComponentHelper.IsMacroRunning && instance != null;
+
+        while (ShouldContinue())
         {
+            // 사이클 시작 시점에는 반드시 회복 탭이 열려 있어야 한다.
+            // 여기서만 activeInHierarchy를 체크한다.
+            if (!instance.gameObject.activeInHierarchy)
+            {
+                Plugin.Log.LogInfo("[EatMacroLoop] CharRecoveryUI 비활성화 감지 → 매크로 자동 중단");
+                break;
+            }
             if (!StepClickBack()) break;
             yield return new WaitForSeconds(0.5f);
-            if (!ComponentHelper.IsMacroRunning || !StepClickConnect()) break;
+            if (!ShouldContinue() || !StepClickConnect()) break;
             yield return new WaitForSeconds(0.5f);
             // 코스튬1 → 연결 활성화 → 코스튬0 → 연결 활성화 순으로 두 코스튬 연결
-            if (!ComponentHelper.IsMacroRunning || !StepClickCostumeItem1()) break;
+            if (!ShouldContinue() || !StepClickCostumeItem1()) break;
             yield return new WaitForSeconds(0.5f);
-            if (!ComponentHelper.IsMacroRunning || !StepClickCostumeConnectEnable()) break;
+            if (!ShouldContinue() || !StepClickCostumeConnectEnable()) break;
             yield return new WaitForSeconds(0.5f);
-            if (!ComponentHelper.IsMacroRunning || !StepClickConnect()) break;
+            if (!ShouldContinue() || !StepClickConnect()) break;
             yield return new WaitForSeconds(0.5f);
-            if (!ComponentHelper.IsMacroRunning || !StepClickCostumeItem0()) break;
+            if (!ShouldContinue() || !StepClickCostumeItem0()) break;
             yield return new WaitForSeconds(0.5f);
-            if (!ComponentHelper.IsMacroRunning || !StepClickCostumeConnectEnable()) break;
+            if (!ShouldContinue() || !StepClickCostumeConnectEnable()) break;
             yield return new WaitForSeconds(0.5f);
             // 회복 버튼을 2회 클릭해 회복 탭으로 이동
-            if (!ComponentHelper.IsMacroRunning || !StepClickRecovery()) break;
+            if (!ShouldContinue() || !StepClickRecovery()) break;
             yield return new WaitForSeconds(0.5f);
-            if (!ComponentHelper.IsMacroRunning || !StepClickRecovery()) break;
+            if (!ShouldContinue() || !StepClickRecovery()) break;
             yield return new WaitForSeconds(0.5f);
 
             // 현재 HP 부족분만큼 먹이기 아이템 클릭 (아이템 1개 = HP +2)
             int feedCount = GetFeedCount();
-            for (int i = 0; i < feedCount && ComponentHelper.IsMacroRunning && StepClickFeedItem(); i++)
+            for (int i = 0; i < feedCount && ShouldContinue() && StepClickFeedItem(); i++)
                 yield return new WaitForSeconds(0.13f);
 
-            if (!ComponentHelper.IsMacroRunning || !StepClickEat()) break;
+            if (!ShouldContinue() || !StepClickEat()) break;
             yield return new WaitForSeconds(0.5f);
         }
         ComponentHelper.IsMacroRunning = false;
-        instance.transform.Find("MacroOverlay")?.gameObject.SetActive(false);
+        if (instance != null)
+            instance.transform.Find("MacroOverlay")?.gameObject.SetActive(false);
     }
 
     /// <summary>
