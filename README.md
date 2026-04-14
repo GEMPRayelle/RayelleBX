@@ -1,8 +1,8 @@
 # RayelleBX
-BepInEx based Browndust2 Plugins  (OverwhelmIndicator)
+BepInEx based Browndust2 Plugins  (OverwhelmIndicator, InfiniteGacha)
 
 
-# cfg 기반 플러그인 활성화
+# cfg based Plugin Activation Guide
 
   동작 방식
   - setting.cfg의 OverwhelmIndicator = false로 바꾸고 게임을 재시작하면 인디케이터가 동작하지 않는다
