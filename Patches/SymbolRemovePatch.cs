@@ -26,6 +26,13 @@ public class SymbolRemovePatch
     // 어떤 몬스터가 제거됐는지 알 수 있지만, 현재는 전체 카운트만 사용한다.
     private static void Postfix(FieldMonsterController __instance)
     {
+        // 심볼 몬스터가 아니라면 카운터 갱신 불필요.
+        // 흡수 스킬 등으로 일반 몬스터가 제거될 때도 이 Postfix가 호출되며,
+        // 그 시점에 심볼 몬스터가 일시 비활성화 상태이면 GetSymbolCount() == 0이 되어
+        // UI가 잘못 삭제되는 버그를 방지한다.
+        if (__instance == null || __instance.gameObject == null) return;
+        if (!__instance.gameObject.name.StartsWith("Symbol_")) return;
+
         Plugin.Log.LogInfo("Symbol Removed");
 
         int symbolCount = GetSymbolCount();

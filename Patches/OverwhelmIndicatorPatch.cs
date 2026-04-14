@@ -102,7 +102,23 @@ public class OverwhelmIndicatorPatch
             // setting.cfg에서 비활성화됐으면 아무것도 하지 않는다
             if (!PluginConfig.OverwhelmIndicator) return;
 
-            if (_isRunning) return;
+            if (_isRunning)
+            {
+                // 코루틴이 이미 실행 중이어도 압도 스킬이 재사용되면 종료 시각을 갱신한다.
+                // 갱신하지 않으면 코루틴이 이전 remaining 기준으로 먼저 끝나고,
+                // 이후 RestartIfStillActive()가 _overwhelmEndTime을 기준으로 remaining을 계산할 때
+                // 이미 만료된 것으로 판단해 재시작하지 않는 버그가 발생한다.
+                float newDuration = 45f;
+                if (__1 != null)
+                {
+                    FieldInfo f = typeof(TalentSkillTable).GetField("valueList_", BindingFlags.Instance | BindingFlags.NonPublic);
+                    if (f != null && f.GetValue(__1) is IList lst && lst.Count > 1)
+                        newDuration = Convert.ToSingle(lst[1]);
+                }
+                _overwhelmEndTime = Time.time + newDuration;
+                Plugin.Log.LogInfo($"[OverwhelmIndicatorPatch] 압도 재사용 — _overwhelmEndTime 갱신 (newDuration={newDuration})");
+                return;
+            }
 
             Plugin.Log.LogInfo("[OverwhelmIndicatorPatch] Postfix 호출됨");
 
@@ -132,7 +148,7 @@ public class OverwhelmIndicatorPatch
             _isRunning = true;
             _coroutineHost = __instance;
             // TalentSkillManager는 MonoBehaviour이므로 StartCoroutine을 직접 호출할 수 있다
-            _activeCoroutine = __instance.StartCoroutine(UpdateDirectionRoutine(playerTransform, duration, 0.3f, target));
+            _activeCoroutine = __instance.StartCoroutine(UpdateDirectionRoutine(playerTransform, 0.3f, target));
         }
         catch (Exception e)
         {
@@ -199,11 +215,14 @@ public class OverwhelmIndicatorPatch
         Plugin.Log.LogInfo($"[OverwhelmIndicatorPatch] 필드 이동 후 압도 재시작 (remaining={remaining:F1}s)");
         _isRunning = true;
         _coroutineHost = runner;
-        _activeCoroutine = runner.StartCoroutine(UpdateDirectionRoutine(playerObj.transform, remaining, 0.3f, target));
+        _activeCoroutine = runner.StartCoroutine(UpdateDirectionRoutine(playerObj.transform, 0.3f, target));
     }
 
     /// <summary>
-    /// 스킬 지속 시간 동안 interval 초마다 인디케이터를 갱신하는 코루틴.
+    /// 압도 버프가 유효한 동안 interval 초마다 인디케이터를 갱신하는 코루틴.
+    /// duration 파라미터 대신 _overwhelmEndTime을 직접 비교한다.
+    /// 이렇게 하면 압도 스킬이 재사용되어 _overwhelmEndTime이 갱신되면
+    /// 코루틴도 자동으로 연장된다.
     ///
     /// 매 tick마다:
     /// 1. FindObjectsOfType&lt;FieldMonsterController&gt;()로 현재 씬의 심볼 몬스터를 탐색
@@ -214,13 +233,11 @@ public class OverwhelmIndicatorPatch
     /// </summary>
     private static IEnumerator UpdateDirectionRoutine(
         Transform playerTransform,
-        float duration,     // 코루틴이 실행될 총 시간(초)
         float interval,     // 갱신 주기(초)
         GameObject target)  // 인디케이터를 붙일 부모 오브젝트 (필드 보상 UI 레이어)
     {
         Plugin.Log.LogInfo("[OverwhelmIndicatorPatch] 코루틴 진입");
-        float elapsed = 0f;
-        while (elapsed < duration)
+        while (Time.time < _overwhelmEndTime)
         {
             try
             {
@@ -341,7 +358,6 @@ public class OverwhelmIndicatorPatch
 
             // interval 초 대기 후 다음 tick — WaitForSeconds는 유니티 코루틴 표준 대기 방식
             yield return new WaitForSeconds(interval);
-            elapsed += interval;
         }
 
         // 지속 시간 종료 — 남아있는 인디케이터 전부 제거 및 플래그 초기화
