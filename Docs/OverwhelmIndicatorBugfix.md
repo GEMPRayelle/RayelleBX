@@ -9,7 +9,10 @@
 1. [버그 1 — 구 코루틴 미중단으로 인한 상태 오염](#버그-1--구-코루틴-미중단으로-인한-상태-오염)
 2. [버그 2 — 마법진 이동 후 압도 재발동 불가](#버그-2--마법진-이동-후-압도-재발동-불가)
 3. [버그 3 — RestartIfStillActive 코루틴 미실행](#버그-3--restartifstillactive-코루틴-미실행)
-4. [최종 상태 요약](#최종-상태-요약)
+4. [버그 4 — 흡수 스킬 사용 시 심볼 카운터 UI 오삭제](#버그-4--흡수-스킬-사용-시-심볼-카운터-ui-오삭제)
+5. [버그 5 — 필드 이동 후 압도 재사용 시 화살표 조기 소멸](#버그-5--필드-이동-후-압도-재사용-시-화살표-조기-소멸)
+6. [버그 6 — 일부 팩(Memory's Edge)에서 인디케이터 미표시](#버그-6--일부-팩memorys-edge에서-인디케이터-미표시)
+7. [최종 상태 요약](#최종-상태-요약)
 
 ---
 
@@ -176,6 +179,181 @@ OverwhelmIndicatorPatch.RestartIfStillActive(__instance, fieldReward);
 // 변경 후
 OverwhelmIndicatorPatch.RestartIfStillActive(fieldReward);
 ```
+
+---
+
+---
+
+## 버그 4 — 흡수 스킬 사용 시 심볼 카운터 UI 오삭제
+
+### 증상
+
+전투 필드에서 흡수 재능 스킬을 사용하면 심볼 몬스터가 남아있음에도 하단 심볼 카운터 UI(`Button - Item6`)가 사라진다.
+
+### 원인
+
+`SymbolRemovePatch`는 `FieldMonsterController.RemoveMonster`에 Postfix가 걸려 있어 **어떤 몬스터가 제거되든** 호출된다.
+
+흡수 스킬이 일반 몬스터를 처치할 때 `RemoveMonster`가 호출되고, `GetSymbolCount()`를 실행한다. 이 시점에 심볼 몬스터가 스킬 이펙트로 인해 일시 비활성화(`activeSelf = false`) 상태이면 `FindObjectsOfType<GameObject>()`가 이를 탐색하지 못해 `count = 0`이 반환된다. 결과적으로 심볼이 모두 사라진 것으로 판단해 UI를 `Destroy`한다.
+
+```
+흡수 스킬 → 일반 몬스터 RemoveMonster 호출
+  → SymbolRemovePatch.Postfix 실행
+    → GetSymbolCount() 호출 (이 시점 심볼 몬스터 일시 비활성화)
+      → count = 0 → Button - Item6 Destroy  ← 오삭제
+```
+
+### 수정 내용 (`SymbolRemovePatch.cs`)
+
+제거된 몬스터가 심볼 몬스터가 아니면 조기 리턴하도록 수정:
+
+```csharp
+// 변경 전
+private static void Postfix(FieldMonsterController __instance)
+{
+    Plugin.Log.LogInfo("Symbol Removed");
+    int symbolCount = GetSymbolCount();
+
+// 변경 후
+private static void Postfix(FieldMonsterController __instance)
+{
+    if (__instance == null || __instance.gameObject == null) return;
+    if (!SymbolMonsterHelper.IsSymbolMonster(__instance.gameObject)) return;
+
+    Plugin.Log.LogInfo("Symbol Removed");
+    int symbolCount = SymbolMonsterHelper.GetSymbolCount();
+```
+
+---
+
+## 버그 5 — 필드 이동 후 압도 재사용 시 화살표 조기 소멸
+
+### 증상
+
+압도 버프가 남은 상태로 다른 필드로 이동해 압도 스킬을 **재사용**한 뒤 일정 시간이 지나면 화살표가 사라진다. 게임의 압도 버프는 아직 유효하지만 플러그인 로직상 종료 시각이 지난 것으로 처리된다.
+
+### 원인
+
+두 가지 문제가 복합 발생한다.
+
+**문제 1 — `_overwhelmEndTime` 미갱신**
+
+`Postfix`에서 `_isRunning = true`이면 조기 리턴하면서 `_overwhelmEndTime`을 갱신하지 않는다. 필드 이동 후 압도 스킬을 재사용해도 종료 시각이 처음 발동 시각 기준으로 고정된다.
+
+**문제 2 — 코루틴이 고정 `duration`으로 실행**
+
+`RestartIfStillActive()`는 남은 시간(`remaining`)을 계산해 코루틴에 `duration` 파라미터로 전달한다. 코루틴 내부는 `elapsed < duration`으로 종료를 판단하기 때문에, 이후 `_overwhelmEndTime`이 갱신되어도 코루틴은 원래 `remaining` 기준으로 조기 종료된다.
+
+```
+T=0:  압도 발동 → _overwhelmEndTime = 45, 코루틴 시작 (duration=45)
+T=20: 필드 이동 → ClearAndDestroyIndicators, RestartIfStillActive
+        → remaining=25, 새 코루틴 시작 (duration=25)
+T=22: 필드 B에서 압도 재사용
+        → _isRunning=true이므로 조기 리턴 ← _overwhelmEndTime 갱신 안 됨 (여전히 45)
+T=45: 코루틴 elapsed=25 → duration=25 도달 → 코루틴 종료, _isRunning=false
+        → 게임의 압도 버프는 T=67까지 유효하지만 화살표 소멸
+```
+
+### 수정 내용 (`OverwhelmIndicatorPatch.cs`)
+
+**① `_isRunning = true`일 때도 `_overwhelmEndTime` 갱신**
+
+```csharp
+if (_isRunning)
+{
+    float newDuration = 45f;
+    if (__1 != null)
+    {
+        FieldInfo f = typeof(TalentSkillTable).GetField("valueList_", ...);
+        if (f != null && f.GetValue(__1) is IList lst && lst.Count > 1)
+            newDuration = Convert.ToSingle(lst[1]);
+    }
+    _overwhelmEndTime = Time.time + newDuration;
+    return;
+}
+```
+
+**② 코루틴 종료 조건을 `elapsed < duration` → `Time.time < _overwhelmEndTime`으로 변경**
+
+```csharp
+// 변경 전
+private static IEnumerator UpdateDirectionRoutine(
+    Transform playerTransform, float duration, float interval, GameObject target)
+{
+    float elapsed = 0f;
+    while (elapsed < duration)
+    {
+        // ...
+        elapsed += interval;
+    }
+}
+
+// 변경 후
+private static IEnumerator UpdateDirectionRoutine(
+    Transform playerTransform, float interval, GameObject target)
+{
+    while (Time.time < _overwhelmEndTime)
+    {
+        // ... (elapsed 변수 제거)
+    }
+}
+```
+
+`_overwhelmEndTime`이 갱신될 때 코루틴도 자동으로 연장된다. `RestartIfStillActive`의 `remaining` 파라미터도 제거됐다.
+
+---
+
+## 버그 6 — 일부 팩(Memory's Edge)에서 인디케이터 미표시
+
+### 증상
+
+Memory's Edge 등 일부 특수 팩에서 압도 스킬을 사용해도 방향 인디케이터가 표시되지 않고, 심볼 카운터 UI도 뜨지 않는다.
+
+### 원인 파악
+
+진단 로그를 추가해 코루틴 첫 tick에서 씬의 `FieldMonsterController` 이름을 전부 출력했다:
+
+```
+[OverwhelmIndicatorPatch] 몬스터 발견: "FieldMonster_101(청소부)" (active=True)
+[OverwhelmIndicatorPatch] 몬스터 발견: "FieldMonster_102(청소부)" (active=True)
+```
+
+Memory's Edge는 심볼 몬스터 이름이 `Symbol_` 이 아닌 **`FieldMonster_`** prefix를 사용한다. 기존 코드는 `Symbol_`로만 필터링했으므로 아무것도 탐지하지 못했다.
+
+일반 필드에서는 `FieldMonster_` = 일반 잡몹이므로, 단순히 `FieldMonster_`를 추가하면 일반 필드에서 잡몹에도 화살표가 붙는 오염이 발생한다.
+
+### 수정 내용 — `Helpers/SymbolMonsterHelper.cs` 신규 추가
+
+폴백 규칙을 공통 헬퍼로 분리:
+
+- **`Symbol_` 몬스터가 씬에 하나라도 있으면** → `Symbol_` 만 대상 (일반 필드)
+- **`Symbol_` 몬스터가 전혀 없으면** → `FieldMonster_` 를 대상 (Memory's Edge 등 특수 팩)
+
+```csharp
+public static bool IsSymbolMonster(GameObject go)
+{
+    if (go.name.StartsWith("Symbol_")) return true;
+    if (go.name.StartsWith("FieldMonster_"))
+    {
+        // Symbol_ 이 씬에 존재하면 FieldMonster_ 는 일반 잡몹 취급
+        foreach (GameObject obj in Object.FindObjectsOfType<GameObject>())
+            if (obj.activeSelf && obj.name.StartsWith("Symbol_"))
+                return false;
+        return true;
+    }
+    return false;
+}
+```
+
+세 곳의 인라인 `GetSymbolCount()` / `Symbol_` 직접 비교를 모두 `SymbolMonsterHelper`로 교체:
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `OverwhelmIndicatorPatch.cs` | `monster.name.StartsWith("Symbol_")` → `SymbolMonsterHelper.IsSymbolMonster()` |
+| `SymbolRemovePatch.cs` | 인라인 `GetSymbolCount()` 제거, `SymbolMonsterHelper` 사용 |
+| `GameFieldDefaultUIEnablePatch.cs` | 인라인 `GetSymbolCount()` 제거, `SymbolMonsterHelper.GetSymbolCount()` 사용 |
+
+`RayelleBX.csproj`에 `Helpers\SymbolMonsterHelper.cs` `<Compile>` 항목 추가.
 
 ---
 
