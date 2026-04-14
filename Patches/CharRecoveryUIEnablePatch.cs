@@ -155,13 +155,19 @@ public class CharRecoveryUIEnablePatch
             yield return new WaitForSeconds(0.5f);
             if (!ShouldContinue() || !StepClickConnect()) break;
             yield return new WaitForSeconds(0.5f);
-            // 코스튬1 → 연결 활성화 → 코스튬0 → 연결 활성화 순으로 두 코스튬 연결
-            if (!ShouldContinue() || !StepClickCostumeItem1()) break;
-            yield return new WaitForSeconds(0.5f);
-            if (!ShouldContinue() || !StepClickCostumeConnectEnable()) break;
-            yield return new WaitForSeconds(0.5f);
-            if (!ShouldContinue() || !StepClickConnect()) break;
-            yield return new WaitForSeconds(0.5f);
+            // 팝업이 열린 후 CostumeConnectScrollItem1 존재 여부로 코스튬 수를 판단한다.
+            // 2개 이상: 코스튬1 → 연결 활성화 → 재연결 → 코스튬0 → 연결 활성화
+            // 1개:      코스튬0 → 연결 활성화만 처리 (Item1 단계 전체 생략)
+            if (UIHelper.IsExistAndActive(
+                "Singleton (DontDestroy)/AppManager/UI/CostumeConnectPopupUI(Clone)/Button - background/Parent/Image - Backgrond/CostumeScrollView/Viewport/Content/CostumeConnectScrollItem1"))
+            {
+                if (!ShouldContinue() || !StepClickCostumeItem1()) break;
+                yield return new WaitForSeconds(0.5f);
+                if (!ShouldContinue() || !StepClickCostumeConnectEnable()) break;
+                yield return new WaitForSeconds(0.5f);
+                if (!ShouldContinue() || !StepClickConnect()) break;
+                yield return new WaitForSeconds(0.5f);
+            }
             if (!ShouldContinue() || !StepClickCostumeItem0()) break;
             yield return new WaitForSeconds(0.5f);
             if (!ShouldContinue() || !StepClickCostumeConnectEnable()) break;
