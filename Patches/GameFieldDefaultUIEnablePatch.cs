@@ -60,7 +60,7 @@ public class GameFieldDefaultUIEnablePatch
             if (existingItem != null)
                 Object.Destroy(existingItem.gameObject);
 
-            int symbolCount = GetSymbolCount();
+            int symbolCount = SymbolMonsterHelper.GetSymbolCount();
             Plugin.Log.LogInfo($"[GameFieldDefaultUIEnablePatch] symbolCount = {symbolCount}");
 
             if (symbolCount > 0)
@@ -120,18 +120,4 @@ public class GameFieldDefaultUIEnablePatch
         }
     }
 
-    /// <summary>
-    /// 현재 씬에서 이름이 "Symbol_"로 시작하는 GameObject 수를 반환한다.
-    /// 심볼 몬스터는 게임에서 이 네이밍 규칙을 따른다.
-    /// </summary>
-    private static int GetSymbolCount()
-    {
-        int count = 0;
-        foreach (GameObject obj in Object.FindObjectsOfType<GameObject>())
-        {
-            if (obj.name.StartsWith("Symbol_"))
-                count++;
-        }
-        return count;
-    }
 }

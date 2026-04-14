@@ -237,7 +237,6 @@ public class OverwhelmIndicatorPatch
         GameObject target)  // 인디케이터를 붙일 부모 오브젝트 (필드 보상 UI 레이어)
     {
         Plugin.Log.LogInfo("[OverwhelmIndicatorPatch] 코루틴 진입");
-        bool _loggedMonsterNames = false; // 첫 tick에만 전체 몬스터 이름을 로그에 출력한다
         while (Time.time < _overwhelmEndTime)
         {
             try
@@ -251,31 +250,12 @@ public class OverwhelmIndicatorPatch
                 // 타입 필터링 검색 — GameObject 전수 탐색보다 훨씬 빠르다
                 FieldMonsterController[] monsters = UnityEngine.Object.FindObjectsOfType<FieldMonsterController>();
 
-                // 진단 로그: 첫 tick에 씬에 존재하는 모든 FieldMonsterController 이름을 출력
-                // 심볼 몬스터 이름 prefix가 "Symbol_"이 아닌 맵에서 실제 이름 확인용
-                if (!_loggedMonsterNames)
-                {
-                    _loggedMonsterNames = true;
-                    if (monsters.Length == 0)
-                    {
-                        Plugin.Log.LogWarning("[OverwhelmIndicatorPatch] FieldMonsterController 없음 — 이 맵은 FieldMonsterController를 사용하지 않을 수 있음");
-                    }
-                    else
-                    {
-                        foreach (FieldMonsterController m in monsters)
-                        {
-                            if (m != null && m.gameObject != null)
-                                Plugin.Log.LogInfo($"[OverwhelmIndicatorPatch] 몬스터 발견: \"{m.gameObject.name}\" (active={m.gameObject.activeSelf})");
-                        }
-                    }
-                }
-
                 HashSet<GameObject> currentSymbols = new HashSet<GameObject>();
 
                 foreach (FieldMonsterController monster in monsters)
                 {
                     if (monster == null || monster.gameObject == null || !monster.gameObject.activeSelf) continue;
-                    if (!monster.gameObject.name.StartsWith("Symbol_")) continue;
+                    if (!SymbolMonsterHelper.IsSymbolMonster(monster.gameObject)) continue;
 
                     currentSymbols.Add(monster.gameObject);
 

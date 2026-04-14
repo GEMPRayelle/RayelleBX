@@ -99,6 +99,7 @@
     <Compile Include="Helpers\PluginConfig.cs" />
     <Compile Include="Helpers\UIHelper.cs" />
     <Compile Include="Helpers\CoroutineHelper.cs" />
+    <Compile Include="Helpers\SymbolMonsterHelper.cs" />
     <Compile Include="Components\CoroutineRunner.cs" />
     <Compile Include="Config\CostumeConfig.cs" />
     <Compile Include="Patches\OverwhelmIndicatorPatch.cs" />

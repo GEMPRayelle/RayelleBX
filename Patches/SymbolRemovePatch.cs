@@ -14,6 +14,7 @@
 // SymbolRemovePatch             : 몬스터 제거될 때마다 UI를 '갱신 또는 삭제'
 
 using HarmonyLib;
+using RayelleBX.Helpers;
 using TMPro;
 using UnityEngine;
 
@@ -31,11 +32,11 @@ public class SymbolRemovePatch
         // 그 시점에 심볼 몬스터가 일시 비활성화 상태이면 GetSymbolCount() == 0이 되어
         // UI가 잘못 삭제되는 버그를 방지한다.
         if (__instance == null || __instance.gameObject == null) return;
-        if (!__instance.gameObject.name.StartsWith("Symbol_")) return;
+        if (!SymbolMonsterHelper.IsSymbolMonster(__instance.gameObject)) return;
 
         Plugin.Log.LogInfo("Symbol Removed");
 
-        int symbolCount = GetSymbolCount();
+        int symbolCount = SymbolMonsterHelper.GetSymbolCount();
         GameObject fieldReward = GameObject.Find("Singleton (DontDestroy)/AppManager/UI/GameFieldDefaultUI(Clone)/Parent/MapLayout/MapScaleParent/Layout - FieldReward");
 
         if (fieldReward == null) return;
@@ -62,19 +63,4 @@ public class SymbolRemovePatch
         }
     }
 
-    /// <summary>
-    /// 현재 씬에서 이름이 "Symbol_"로 시작하는 활성 GameObject 수를 반환한다.
-    /// GameFieldDefaultUIEnablePatch의 동일 메서드와 중복이지만,
-    /// 각 패치가 독립적으로 동작할 수 있도록 각자 유지한다.
-    /// </summary>
-    private static int GetSymbolCount()
-    {
-        int count = 0;
-        foreach (GameObject obj in Object.FindObjectsOfType<GameObject>())
-        {
-            if (obj.name.StartsWith("Symbol_"))
-                count++;
-        }
-        return count;
-    }
 }
