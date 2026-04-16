@@ -164,14 +164,8 @@ public class GachaMacroUIEnablePatch
                     if (raw is int i) costumeId = i;
                     else if (!int.TryParse(raw?.ToString(), out costumeId)) continue;
 
-                    bool isUR   = costumeSet.Count > 0 && costumeSet.Contains(costumeId);
-                    bool isWish = wishSet.Count  > 0 && wishSet.Contains(costumeId);
-
-                    if (isUR)   urCount++;
-                    if (isWish) wishCount++;
-
-                    Plugin.Log.LogInfo(
-                        $"[GachaMacro] CostumeID={costumeId} UR={isUR} Wish={isWish}");
+                    if (costumeSet.Count > 0 && costumeSet.Contains(costumeId)) urCount++;
+                    if (wishSet.Count  > 0 && wishSet.Contains(costumeId))   wishCount++;
                 }
             }
 

@@ -19,11 +19,7 @@ public static class UIHelper
     public static bool IsExistAndActive(string path, string label = null)
     {
         GameObject go = GameObject.Find(path);
-        if (go == null)
-        {
-            Plugin.Log.LogInfo($"[UIHelper] '{label ?? path}' Not Found");
-            return false;
-        }
+        if (go == null) return false;
         return go.activeSelf;
     }
 
@@ -37,7 +33,7 @@ public static class UIHelper
         GameObject go = GameObject.Find(path);
         if (go == null)
         {
-            Plugin.Log.LogInfo($"[UIHelper] '{label}' Not Found");
+            Plugin.Log.LogWarning($"[UIHelper] '{label}' Not Found");
             return false;
         }
         return TryInvokeButton(go, label);
@@ -52,7 +48,7 @@ public static class UIHelper
         Button btn = go.GetComponent<Button>();
         if (btn == null)
         {
-            Plugin.Log.LogInfo($"[UIHelper] Button component not found on '{label ?? go.name}'");
+            Plugin.Log.LogWarning($"[UIHelper] Button component not found on '{label ?? go.name}'");
             return false;
         }
         //Plugin.Log.LogInfo($"[UIHelper] '{label ?? go.name}' clicked"); //Debugging
@@ -68,7 +64,7 @@ public static class UIHelper
     {
         GameObject go = GameObject.Find(path);
         if (go == null)
-            Plugin.Log.LogInfo($"[UIHelper] '{label ?? path}' Not Found");
+            Plugin.Log.LogWarning($"[UIHelper] '{label ?? path}' Not Found");
         return go;
     }
 }

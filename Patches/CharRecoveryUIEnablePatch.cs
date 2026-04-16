@@ -40,8 +40,6 @@ public class CharRecoveryUIEnablePatch
     // __instance : 패치된 CharRecoveryUI 인스턴스
     private static void Postfix(CharRecoveryUI __instance)
     {
-        Plugin.Log.LogInfo("CharRecoveryUI Patch Activated");
-
         // 복제 원본으로 쓸 Auto 버튼 — 없으면 UI 구조가 바뀐 것이므로 종료
         GameObject recoveryButton = UIHelper.FindOrLog(
             "Singleton (DontDestroy)/AppManager/UI/CharUI(Clone)/UIRoot/Mask/Tab - 4 - Recovery/Object - Button/Button - Auto",
@@ -98,7 +96,7 @@ public class CharRecoveryUIEnablePatch
         Button btn = buttonObj.GetComponent<Button>();
         if (btn == null)
         {
-            Plugin.Log.LogInfo("MacroMenu Button component not found");
+            Plugin.Log.LogWarning("[CharRecoveryUI] Button component not found on Button - Macro");
             return;
         }
         btn.onClick.RemoveAllListeners();
@@ -209,7 +207,7 @@ public class CharRecoveryUIEnablePatch
 
         if (totalGo == null || curGo == null)
         {
-            Plugin.Log.LogInfo("Health GameObjects not found");
+            Plugin.Log.LogWarning("[GetFeedCount] Health GameObjects not found");
             return 0;
         }
 
@@ -217,19 +215,19 @@ public class CharRecoveryUIEnablePatch
         TextMeshProUGUI curTmp   = curGo.GetComponent<TextMeshProUGUI>();
         if (totalTmp == null || curTmp == null)
         {
-            Plugin.Log.LogInfo("TextMeshProUGUI components not found");
+            Plugin.Log.LogWarning("[GetFeedCount] TextMeshProUGUI components not found");
             return 0;
         }
 
         // TrimStart('/') : "/{최대HP}" 형식에서 '/'를 제거
         if (!int.TryParse(totalTmp.text.TrimStart('/').Trim(), out int total))
         {
-            Plugin.Log.LogInfo("Failed to parse total health: " + totalTmp.text);
+            Plugin.Log.LogWarning("[GetFeedCount] Failed to parse total health: " + totalTmp.text);
             return 0;
         }
         if (!int.TryParse(curTmp.text.Trim(), out int current))
         {
-            Plugin.Log.LogInfo("Failed to parse current health: " + curTmp.text);
+            Plugin.Log.LogWarning("[GetFeedCount] Failed to parse current health: " + curTmp.text);
             return 0;
         }
 

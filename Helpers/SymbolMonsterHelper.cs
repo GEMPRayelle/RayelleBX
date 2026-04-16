@@ -58,9 +58,9 @@ public static class SymbolMonsterHelper
         // FieldMonster_ 는 Symbol_ 이 씬에 없을 때만 심볼로 취급한다
         if (go.name.StartsWith(FallbackPrefix))
         {
-            foreach (GameObject obj in Object.FindObjectsOfType<GameObject>())
+            foreach (FieldMonsterController mc in Object.FindObjectsOfType<FieldMonsterController>())
             {
-                if (obj.activeSelf && obj.name.StartsWith(PrimaryPrefix))
+                if (mc.gameObject.activeSelf && mc.gameObject.name.StartsWith(PrimaryPrefix))
                     return false; // Symbol_ 이 존재하므로 FieldMonster_ 는 일반 몬스터
             }
             return true;

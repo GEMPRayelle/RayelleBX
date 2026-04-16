@@ -34,8 +34,6 @@ public class SymbolRemovePatch
         if (__instance == null || __instance.gameObject == null) return;
         if (!SymbolMonsterHelper.IsSymbolMonster(__instance.gameObject)) return;
 
-        Plugin.Log.LogInfo("Symbol Removed");
-
         int symbolCount = SymbolMonsterHelper.GetSymbolCount();
         GameObject fieldReward = GameObject.Find("Singleton (DontDestroy)/AppManager/UI/GameFieldDefaultUI(Clone)/Parent/MapLayout/MapScaleParent/Layout - FieldReward");
 

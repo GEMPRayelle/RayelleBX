@@ -120,8 +120,6 @@ public class OverwhelmIndicatorPatch
                 return;
             }
 
-            Plugin.Log.LogInfo("[OverwhelmIndicatorPatch] Postfix 호출됨");
-
             // 인디케이터를 붙일 부모 오브젝트 (필드 보상 UI 레이어)
             GameObject target = GameObject.Find("Singleton (DontDestroy)/AppManager/UI/GameFieldDefaultUI(Clone)/Parent/MapLayout/MapScaleParent/Layout - FieldReward");
             GameObject playerObj = GameObject.Find("GameFieldManager(Clone)/CharGroup/Player");
@@ -236,7 +234,6 @@ public class OverwhelmIndicatorPatch
         float interval,     // 갱신 주기(초)
         GameObject target)  // 인디케이터를 붙일 부모 오브젝트 (필드 보상 UI 레이어)
     {
-        Plugin.Log.LogInfo("[OverwhelmIndicatorPatch] 코루틴 진입");
         while (Time.time < _overwhelmEndTime)
         {
             try

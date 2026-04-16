@@ -38,8 +38,6 @@ public class QuickMenuUIEnablePatch
     // __instance : 패치된 QuickMenuUI 인스턴스
     private static void Postfix(QuickMenuUI __instance)
     {
-        Plugin.Log.LogInfo("QuickMenuUIEnablePatch Activated");
-
         // 복제 원본으로 쓸 대화 버튼 — 없으면 퀵메뉴 구조가 바뀐 것이므로 종료
         GameObject talkButton = UIHelper.FindOrLog(
             "Singleton (DontDestroy)/AppManager/UI/QuickMenuUI(Clone)/Parent/MenuButtonLayout/Layout - Menu/BottomMenus - Link/object0",

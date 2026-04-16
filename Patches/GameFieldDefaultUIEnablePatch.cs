@@ -35,21 +35,17 @@ public class GameFieldDefaultUIEnablePatch
     {
         try
         {
-            Plugin.Log.LogInfo("[GameFieldDefaultUIEnablePatch] Postfix 시작");
-
             // 새 필드에 진입했으므로 이전 필드에서 만든 압도 인디케이터를 모두 제거
             OverwhelmIndicatorPatch.ClearAndDestroyIndicators();
-            Plugin.Log.LogInfo("[GameFieldDefaultUIEnablePatch] ClearAndDestroyIndicators 완료");
 
             // 전체 경로로 UI 오브젝트를 찾는다.
             // GameObject.Find()는 성능이 좋지 않지만, 필드 로드 시 한 번만 실행되므로 문제없다.
             GameObject fieldReward = GameObject.Find("Singleton (DontDestroy)/AppManager/UI/GameFieldDefaultUI(Clone)/Parent/MapLayout/MapScaleParent/Layout - FieldReward");
             if (fieldReward == null)
             {
-                Plugin.Log.LogInfo("[GameFieldDefaultUIEnablePatch] Layout - FieldReward 오브젝트를 찾지 못함 → 종료");
+                Plugin.Log.LogWarning("[GameFieldDefaultUIEnablePatch] Layout - FieldReward 오브젝트를 찾지 못함 → 종료");
                 return;
             }
-            Plugin.Log.LogInfo("[GameFieldDefaultUIEnablePatch] fieldReward 찾음");
 
             // 마법진 등으로 필드를 이동했을 때 압도 버프가 아직 활성 상태이면 인디케이터를 재시작한다.
             // 이미 활성인 스킬은 게임이 재발동하지 않아 Postfix가 다시 불리지 않기 때문이다.
@@ -61,7 +57,6 @@ public class GameFieldDefaultUIEnablePatch
                 Object.Destroy(existingItem.gameObject);
 
             int symbolCount = SymbolMonsterHelper.GetSymbolCount();
-            Plugin.Log.LogInfo($"[GameFieldDefaultUIEnablePatch] symbolCount = {symbolCount}");
 
             if (symbolCount > 0)
             {
@@ -107,12 +102,8 @@ public class GameFieldDefaultUIEnablePatch
                 RectTransform textRect = textGo.AddComponent<RectTransform>();
                 textRect.sizeDelta = new Vector2(40f, 40f);
                 textRect.anchoredPosition = new Vector2(0f, -10f);
-                Plugin.Log.LogInfo("[GameFieldDefaultUIEnablePatch] CreateTMPro 호출 전");
                 ComponentHelper.CreateTMPro(textGo, symbolCount.ToString(), new Color(1f, 1f, 1f, 1f), 26);
-                Plugin.Log.LogInfo("[GameFieldDefaultUIEnablePatch] CreateTMPro 완료");
             }
-
-            Plugin.Log.LogInfo("[GameFieldDefaultUIEnablePatch] Postfix 정상 완료");
         }
         catch (System.Exception e)
         {
