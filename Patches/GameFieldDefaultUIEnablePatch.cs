@@ -5,9 +5,8 @@
 // 이 시점에 필드의 몬스터 배치가 완료되어 있어 심볼 몬스터 수를 정확히 셀 수 있다.
 //
 // [동작 흐름]
-// 1. 이전 필드의 인디케이터를 전부 정리 (ClearAndDestroyIndicators)
-// 2. Layout - FieldReward GameObject를 찾아 커스텀 아이템("Button - Item6") 추가
-// 3. 아이콘 이미지(symbol_monster.png) + 카운트 텍스트(TMP)로 UI 구성
+// 1. Layout - FieldReward GameObject를 찾아 커스텀 아이템("Button - Item6") 추가
+// 2. 아이콘 이미지(symbol_monster.png) + 카운트 텍스트(TMP)로 UI 구성
 //
 // [UI 계층 구조]
 // Layout - FieldReward
@@ -35,9 +34,6 @@ public class GameFieldDefaultUIEnablePatch
     {
         try
         {
-            // 새 필드에 진입했으므로 이전 필드에서 만든 압도 인디케이터를 모두 제거
-            OverwhelmIndicatorPatch.ClearAndDestroyIndicators();
-
             // 전체 경로로 UI 오브젝트를 찾는다.
             // GameObject.Find()는 성능이 좋지 않지만, 필드 로드 시 한 번만 실행되므로 문제없다.
             GameObject fieldReward = GameObject.Find("Singleton (DontDestroy)/AppManager/UI/GameFieldDefaultUI(Clone)/Parent/MapLayout/MapScaleParent/Layout - FieldReward");
@@ -46,10 +42,6 @@ public class GameFieldDefaultUIEnablePatch
                 Plugin.Log.LogWarning("[GameFieldDefaultUIEnablePatch] Layout - FieldReward 오브젝트를 찾지 못함 → 종료");
                 return;
             }
-
-            // 마법진 등으로 필드를 이동했을 때 압도 버프가 아직 활성 상태이면 인디케이터를 재시작한다.
-            // 이미 활성인 스킬은 게임이 재발동하지 않아 Postfix가 다시 불리지 않기 때문이다.
-            OverwhelmIndicatorPatch.RestartIfStillActive(fieldReward);
 
             // 이전 실행에서 생성한 아이템이 남아있으면 제거 후 새로 만든다
             Transform existingItem = fieldReward.transform.Find("Button - Item6");

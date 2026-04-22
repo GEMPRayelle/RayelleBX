@@ -53,9 +53,7 @@ Postfix 파라미터 규칙:
 `Plugin.cs`의 `Awake()`에서 두 가지 방식으로 패치를 등록한다:
 
 1. **`TryPatchAll` 래퍼 방식** — `GameFieldDefaultUIEnablePatch`, `SymbolRemovePatch`, `QuickMenuUIEnablePatch`, `CharRecoveryUIEnablePatch`는 `[HarmonyPatch]` 속성이 있으므로 `TryPatchAll(_harmony, typeof(...))` 사용
-2. **`ApplyPatches()` 수동 방식** — `OverwhelmIndicatorPatch`, `CharUIEnablePatch`, `GachaMacroUIEnablePatch`는 `ApplyPatches(harmony)` 메서드를 직접 호출. 내부에서 `AccessTools.Method` + try-catch로 각 패치를 개별 보호
-
-> **중요**: `OverwhelmIndicatorPatch`에 `TargetMethods()` (HarmonyX 자동 감지 이름)를 쓰면 `PatchAll` 시 이중 호출된다. 반드시 `GetTargetMethods()`로 이름을 유지하고 `Plugin.cs`에서 수동 패치할 것.
+2. **`ApplyPatches()` 수동 방식** — `CharUIEnablePatch`, `GachaMacroUIEnablePatch`는 `ApplyPatches(harmony)` 메서드를 직접 호출. 내부에서 `AccessTools.Method` + try-catch로 각 패치를 개별 보호
 
 > **중요**: PatchAll 실패는 이후 패치 등록을 중단시킨다. 모든 PatchAll 호출은 반드시 `TryPatchAll`로 감싸야 한다.
 
@@ -63,20 +61,11 @@ Postfix 파라미터 규칙:
 
 `Assembly-CSharp.dll`은 난독화되어 있어 메서드/필드명이 게임 업데이트마다 변경된다.
 
-- **TalentSkillManager 패치 후보**: 게임 업데이트 시 이름이 바뀌므로 `OverwhelmIndicatorPatch.GetTargetMethods()`에 후보 이름을 배열로 나열 — 존재하는 것만 패치, 없는 것은 Warning 로그
 - **FontLocalizer 필드** (v2026-04-11 기준): `ὡὥὢὬὡὭὯὭὥὦὢ` (fontName), `ὮὯὡὨὬὯὭὬὯὫὫ` (fontMaterial), apply메서드: `ὤὮὫὯὦὭὥὦὫὩὢ` — 탐색 방법은 `Docs/FontLocalizerReverseEngineering.md` 참조
 - **CharCostumeUI 필드** (v2026-04-11 기준): 코스튬 데이터 필드 `ὩὠὬὣὥὮὦὢὩὧὭ`, CostumeID 프로퍼티 `ὪὫὫὢὩὦὤὪὧὫὡ`
 - obfuscated 이름 탐색은 Mono.Cecil로 `Assembly-CSharp.dll` 분석 — `Docs/Maintenance.md` 참조
 
 ### 주요 기능
-
-**OverwhelmIndicator** (`Patches/OverwhelmIndicatorPatch.cs`)
-- `TalentSkillManager`의 압도 스킬 메서드 Postfix로 트리거
-- 필드 내 `Symbol_` 이름의 `FieldMonsterController` 오브젝트를 탐색
-- `DirectionFieldMark0`을 복제해 빨간 방향 인디케이터 생성 (`Init()` 리플렉션 호출)
-- `_isRunning` 플래그로 중복 실행 방지
-- `activeIndicators` 딕셔너리(`GameObject → DirectionFieldIndicator`)로 개별 추적
-- 코루틴 안에서 딕셔너리 직접 수정 시 예외 발생 → `toRemove` 리스트로 분리해 일괄 삭제
 
 **심볼 카운터 UI** (`Patches/GameFieldDefaultUIEnablePatch.cs`)
 - `GameFieldDefaultUI.LoadFieldComplete` Postfix — 필드가 완전히 로드된 직후 실행

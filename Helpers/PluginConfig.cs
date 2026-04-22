@@ -31,7 +31,6 @@ public static class PluginConfig
         Path.Combine(Paths.PluginPath, "RayelleBX", "setting.cfg");
 
     // --- 기능 On/Off (기본값: 모두 활성화) ---
-    public static bool OverwhelmIndicator  { get; private set; } = true;
     public static bool QuickMenuMacro      { get; private set; } = true;
     public static bool CharRecoveryMacro   { get; private set; } = true;
     public static bool CharCostumeLogging  { get; private set; } = true;
@@ -96,9 +95,6 @@ public static class PluginConfig
 
                 switch (key)
                 {
-                    case "OverwhelmIndicator":
-                        OverwhelmIndicator = value.Equals("true", StringComparison.OrdinalIgnoreCase);
-                        break;
                     case "QuickMenuMacro":
                         QuickMenuMacro = value.Equals("true", StringComparison.OrdinalIgnoreCase);
                         break;
@@ -144,7 +140,7 @@ public static class PluginConfig
 
             Plugin.Log.LogInfo(
                 $"[PluginConfig] 로드 완료 — " +
-                $"OverwhelmIndicator={OverwhelmIndicator}, QuickMenuMacro={QuickMenuMacro}, " +
+                $"QuickMenuMacro={QuickMenuMacro}, " +
                 $"CharRecoveryMacro={CharRecoveryMacro}, CharCostumeLogging={CharCostumeLogging}, " +
                 $"InfiniteGachaMacro={InfiniteGachaMacro} " +
                 $"(StepDelay={GachaStepDelay}, WaitResultTimeout={GachaWaitResultTimeout}, " +

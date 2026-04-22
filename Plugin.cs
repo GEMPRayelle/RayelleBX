@@ -19,7 +19,6 @@ using HarmonyLib;
 using RayelleBX.Helpers;
 using RayelleBX.Patches;
 using System;
-using System.Reflection;
 using RayelleBX.Config;
 
 namespace RayelleBX;
@@ -49,16 +48,7 @@ public class Plugin : BaseUnityPlugin
         // Harmony 인스턴스를 GUID로 생성. 같은 GUID로 여러 번 패치하면 중복 적용되므로 주의.
         _harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
 
-        // --- 패치 등록 방식 1: 수동 패치 ---
-        // OverwhelmIndicatorPatch는 [HarmonyPatch] 속성이 없다.
-        // 이유: 게임 난독화로 메서드 이름이 업데이트마다 바뀌기 때문에
-        //       GetTargetMethods()로 런타임에 존재하는 메서드만 골라 패치한다.
-        // PatchAll()을 쓰면 TargetMethods()로 오인해 이중 패치가 발생하므로 직접 Patch() 호출.
-        var postfix = new HarmonyMethod(typeof(OverwhelmIndicatorPatch), "Postfix");
-        foreach (MethodBase method in OverwhelmIndicatorPatch.GetTargetMethods())
-            _harmony.Patch(method, postfix: postfix);
-
-        // --- 패치 등록 방식 2: 속성 기반 자동 패치 ---
+        // --- 패치 등록 ---
         // PatchAll은 대상 메서드를 찾지 못하면 예외를 던질 수 있다.
         // 각각 try-catch로 보호해 한 곳에서 실패해도 나머지 패치는 계속 등록된다.
         TryPatchAll(_harmony, typeof(GameFieldDefaultUIEnablePatch));
