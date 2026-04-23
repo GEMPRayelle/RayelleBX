@@ -253,10 +253,32 @@ public class CharRecoveryUIEnablePatch
     // --- 매크로 단계별 클릭 메서드 ---
     // 실패(버튼 없음) 시 false를 반환해 EatMacroLoop에서 break로 중단한다.
 
-    private static bool StepClickFeedItem() =>
-        UIHelper.TryInvokeButton(
-            "Singleton (DontDestroy)/AppManager/UI/CharUI(Clone)/UIRoot/Mask/Tab - 4 - Recovery/LoopScroll/Viewport/Content/PoolItem_0 (CharRecoveryLoopScrollItem)",
-            "feedItem");
+    private static bool StepClickFeedItem()
+    {
+        const string contentPath =
+            "Singleton (DontDestroy)/AppManager/UI/CharUI(Clone)/UIRoot/Mask/Tab - 4 - Recovery/LoopScroll/Viewport/Content";
+        GameObject content = GameObject.Find(contentPath);
+        if (content == null)
+        {
+            Plugin.Log.LogWarning("[StepClickFeedItem] Content not found");
+            return false;
+        }
+
+        foreach (Transform child in content.transform)
+        {
+            foreach (TextMeshProUGUI tmp in child.GetComponentsInChildren<TextMeshProUGUI>(true))
+            {
+                if (!tmp.text.Contains("짐승 고기")) continue;
+                Button btn = child.GetComponentInChildren<Button>(true);
+                if (btn == null) continue;
+                btn.onClick.Invoke();
+                return true;
+            }
+        }
+
+        Plugin.Log.LogWarning("[StepClickFeedItem] 짐승 고기 아이템을 찾을 수 없음");
+        return false;
+    }
 
     private static bool StepClickBack() =>
         UIHelper.TryInvokeButton(
