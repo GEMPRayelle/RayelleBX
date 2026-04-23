@@ -9,11 +9,11 @@
 
 `ComponentHelper.CreateFontLocalizer()`는 생성한 `TextMeshProUGUI`에 게임 전용 폰트(SCDreamExtraBold)를 적용하기 위해 `FontLocalizer` 컴포넌트를 사용한다. 이를 위해 세 가지 obfuscated 이름이 필요하다:
 
-| 역할 | 타입 | 현재 이름 (v2026-04-11) |
+| 역할 | 타입 | 현재 이름 (v2026-04-23) |
 |------|------|------------------------|
-| fontName 필드 | `string` | `ὡὥὢὬὡὭὯὭὥὦὢ` |
-| fontMaterial 필드 | `string` | `ὮὯὡὨὬὯὭὬὯὫὫ` |
-| apply 메서드 | `void()` | `ὤὮὫὯὦὭὥὦὫὩὢ` |
+| fontName 필드 | `string` | `ὩὠὮὮὢὮὭὤὡὥὧ` |
+| fontMaterial 필드 | `string` | `ὦὫὭὥὢὠὮὭὩὦὯ` |
+| apply 메서드 | `void()` | `ὢὫὨὪὮὤὧὭὤὥὡ` |
 
 게임 업데이트 후 Warning 로그가 뜨면 아래 절차로 새 이름을 찾는다.
 
@@ -123,5 +123,6 @@ MethodInfo mApply      = typeof(FontLocalizer).GetMethod("[새 apply 메서드�
 
 | 날짜 | fontName | fontMaterial | apply 메서드 |
 |------|----------|--------------|-------------|
+| 2026-04-23 | `ὩὠὮὮὢὮὭὤὡὥὧ` | `ὦὫὭὥὢὠὮὭὩὦὯ` | `ὢὫὨὪὮὤὧὭὤὥὡ` |
 | 2026-04-11 | `ὡὥὢὬὡὭὯὭὥὦὢ` | `ὮὯὡὨὬὯὭὬὯὫὫ` | `ὤὮὫὯὦὭὥὦὫὩὢ` |
 | (이전) | `ὠὣὪὥὩὯὩὠὤὢὫ` | `ὧὬὤὧὥὪὭὮὡὪὨ` | `ὢὡὨὧὧὤὥὤὢὢὣ` |

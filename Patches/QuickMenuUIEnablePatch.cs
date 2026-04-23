@@ -18,6 +18,7 @@
 
 using HarmonyLib;
 using RayelleBX.Helpers;
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
@@ -38,32 +39,44 @@ public class QuickMenuUIEnablePatch
     // __instance : 패치된 QuickMenuUI 인스턴스
     private static void Postfix(QuickMenuUI __instance)
     {
-        // 복제 원본으로 쓸 대화 버튼 — 없으면 퀵메뉴 구조가 바뀐 것이므로 종료
-        GameObject talkButton = UIHelper.FindOrLog(
-            "Singleton (DontDestroy)/AppManager/UI/QuickMenuUI(Clone)/Parent/MenuButtonLayout/Layout - Menu/BottomMenus - Link/object0",
-            "talkButton");
-        if (talkButton == null) return;
+        try
+        {
+            Plugin.Log.LogInfo($"[QuickMenuUI] SetMenu — id={__instance.GetInstanceID()}, active={__instance.gameObject.activeSelf}");
 
-        Transform macroMenu = talkButton.transform.parent.Find("MacroMenu");
-        if (macroMenu != null)
-        {
-            // 이미 버튼이 존재하는 경우 — 리스너만 재바인딩 (이미 바인딩됐으면 skip)
-            if (_listenerBound) return;
-            BindMacroButtonClick(macroMenu.gameObject, __instance);
+            // 복제 원본으로 쓸 대화 버튼 — 없으면 퀵메뉴 구조가 바뀐 것이므로 종료
+            GameObject talkButton = UIHelper.FindOrLog(
+                "Singleton (DontDestroy)/AppManager/UI/QuickMenuUI(Clone)/Parent/MenuButtonLayout/Layout - Menu/BottomMenus - Link/object0",
+                "talkButton");
+            if (talkButton == null) return;
+
+            Transform macroMenu = talkButton.transform.parent.Find("MacroMenu");
+            if (macroMenu != null)
+            {
+                // 이미 버튼이 존재하는 경우 — 리스너만 재바인딩 (이미 바인딩됐으면 skip)
+                if (_listenerBound) return;
+                BindMacroButtonClick(macroMenu.gameObject, __instance);
+            }
+            else
+            {
+                // 버튼이 없는 경우 — 새로 생성
+                _listenerBound = false;
+                CreateMacroButton(talkButton, __instance);
+            }
         }
-        else
+        catch (Exception e)
         {
-            // 버튼이 없는 경우 — 새로 생성
-            _listenerBound = false;
-            CreateMacroButton(talkButton, __instance);
+            Plugin.Log.LogError($"[QuickMenuUI] Postfix 예외:\n{e}");
         }
     }
 
     private static void CreateMacroButton(GameObject original, QuickMenuUI instance)
     {
         // 대화 버튼을 복제해 같은 부모 아래에 배치 — 레이아웃·크기를 자동으로 상속
-        GameObject buttonObj = Object.Instantiate(original, original.transform.parent);
+        GameObject buttonObj = UnityEngine.Object.Instantiate(original, original.transform.parent);
         buttonObj.name = "MacroMenu";
+        // TutorialFocusTarget이 남아 있으면 튜토리얼 시스템이 잘못 트리거될 수 있으므로 제거
+        Component tft = buttonObj.GetComponent("TutorialFocusTarget");
+        if (tft != null) UnityEngine.Object.Destroy(tft);
         TintMenuIcon(buttonObj);
         BindMacroButtonClick(buttonObj, instance);
     }
@@ -124,26 +137,41 @@ public class QuickMenuUIEnablePatch
     /// </summary>
     private static IEnumerator TalkMacroLoop()
     {
-        while (ComponentHelper.IsMacroRunning)
+        try
         {
-            // 대화 버튼이 활성화될 때까지 대기 (씬 전환·팝업 등으로 잠시 사라질 수 있음)
-            while (!UIHelper.IsExistAndActive(
-                "Singleton (DontDestroy)/AppManager/UI/QuickMenuUI(Clone)/Parent/MenuButtonLayout/Layout - Menu/BottomMenus - Link/object0"))
+            while (ComponentHelper.IsMacroRunning)
+            {
+                // 대화 버튼 대기 — IsMacroRunning도 함께 체크해 Q키 즉시 탈출
+                while (ComponentHelper.IsMacroRunning && !UIHelper.IsExistAndActive(
+                    "Singleton (DontDestroy)/AppManager/UI/QuickMenuUI(Clone)/Parent/MenuButtonLayout/Layout - Menu/BottomMenus - Link/object0"))
+                    yield return new WaitForSeconds(SkipButtonPollInterval);
+                if (!ComponentHelper.IsMacroRunning) break;
+
+                StepClickTalk();
                 yield return new WaitForSeconds(SkipButtonPollInterval);
+                if (!ComponentHelper.IsMacroRunning) break;
 
-            StepClickTalk();
-            yield return new WaitForSeconds(SkipButtonPollInterval);
+                // Skip 버튼 대기 — IsMacroRunning 체크 + 5초 타임아웃 (BalloonScriptUI가 안 열리는 경우 대비)
+                float skipWait = 0f;
+                while (ComponentHelper.IsMacroRunning
+                       && skipWait < 5f
+                       && !UIHelper.IsExistAndActive(
+                           "Singleton (DontDestroy)/AppManager/UI/BalloonScriptUI(Clone)/StorySkipUI/Mask/Layout - Button/Layout - HiddenButton/Button - Skip"))
+                {
+                    yield return new WaitForSeconds(SkipButtonPollInterval);
+                    skipWait += SkipButtonPollInterval;
+                }
+                if (!ComponentHelper.IsMacroRunning) break;
 
-            // BalloonScriptUI가 열리고 Skip 버튼이 나타날 때까지 폴링
-            while (!UIHelper.IsExistAndActive(
-                "Singleton (DontDestroy)/AppManager/UI/BalloonScriptUI(Clone)/StorySkipUI/Mask/Layout - Button/Layout - HiddenButton/Button - Skip"))
-                yield return new WaitForSeconds(SkipButtonPollInterval);
-
-            StepShowBalloonOverlay();
-            StepClickSkip();
-            yield return new WaitForSeconds(LoopInterval);
+                StepShowBalloonOverlay();
+                StepClickSkip();
+                yield return new WaitForSeconds(LoopInterval);
+            }
         }
-        ComponentHelper.IsMacroRunning = false;
+        finally
+        {
+            ComponentHelper.IsMacroRunning = false;
+        }
     }
 
     // --- 매크로 단계별 클릭 메서드 ---

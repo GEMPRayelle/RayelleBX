@@ -102,7 +102,7 @@
     <Compile Include="Helpers\SymbolMonsterHelper.cs" />
     <Compile Include="Components\CoroutineRunner.cs" />
     <Compile Include="Config\CostumeConfig.cs" />
-    <Compile Include="Patches\OverwhelmIndicatorPatch.cs" />
+    <Compile Include="Helpers\DiagnosticHelper.cs" />
     <Compile Include="Patches\GameFieldDefaultUIEnablePatch.cs" />
     <Compile Include="Patches\SymbolRemovePatch.cs" />
     <Compile Include="Patches\QuickMenuUIEnablePatch.cs" />

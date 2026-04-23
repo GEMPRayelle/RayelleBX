@@ -79,15 +79,20 @@ public class GachaMacroUIEnablePatch
 
     // ── Postfix ① GachaResultUI.SetActive(bool) ──────────────────────────────
     // __0 = bool active
+    // __instance 를 object로 받는 이유:
+    // SetActive(bool)이 공통 기반 클래스에 정의된 경우 Harmony가 기반 클래스 메서드를 패치한다.
+    // 그러면 GameFieldDefaultUI 등 같은 기반을 상속하는 모든 타입의 SetActive도 이 Postfix를 발화한다.
+    // GachaResultUI __instance로 선언하면 try-catch 바깥에서 InvalidCastException이 터져 게임이 크래시된다.
 
-    private static void SetActive_Postfix(GachaResultUI __instance, bool __0)
+    private static void SetActive_Postfix(object __instance, bool __0)
     {
         try
         {
             if (!__0) return; // 비활성화 시 무시
+            if (!(__instance is GachaResultUI gachaUI)) return; // 다른 타입이면 무시
 
             // Button - Redraw 탐색 (상대 경로)
-            Transform redrawTransform = __instance.transform.Find(RedrawBtnRelPath);
+            Transform redrawTransform = gachaUI.transform.Find(RedrawBtnRelPath);
             if (redrawTransform == null)
             {
                 Plugin.Log.LogWarning("[GachaMacro] Button - Redraw 없음");
@@ -95,7 +100,7 @@ public class GachaMacroUIEnablePatch
             }
 
             // 이미 자동뽑기 버튼이 있으면 스킵
-            if (__instance.transform.Find(AutoBtnRelPath) != null)
+            if (gachaUI.transform.Find(AutoBtnRelPath) != null)
                 return;
 
             // Button - Redraw 를 복제해 자동뽑기 버튼 생성
@@ -202,45 +207,48 @@ public class GachaMacroUIEnablePatch
     {
         float stepDelay  = PluginConfig.GachaStepDelay;
         float resultWait = PluginConfig.GachaWaitResultTimeout;
-
-        while (ComponentHelper.IsMacroRunning)
+        try
         {
-            // ① Button - Redraw 활성화 대기
-            yield return WaitUntilActive(RedrawBtnFullPath);
-            if (!ComponentHelper.IsMacroRunning) break;
-
-            // ② Button - Redraw 클릭 (다시뽑기)
-            UIHelper.TryInvokeButton(RedrawBtnFullPath, "Button - Redraw");
-            yield return new WaitForSeconds(stepDelay);
-
-            // ③ GachaInfinitePopupUI YES 버튼 대기 및 클릭
-            yield return WaitUntilActive(YesBtnFullPath);
-            if (!ComponentHelper.IsMacroRunning) break;
-
-            UIHelper.TryInvokeButton(YesBtnFullPath, "Button - YES");
-            yield return new WaitForSeconds(stepDelay);
-
-            // ④ Skip 버튼 반복 클릭 (결과 애니메이션 스킵)
-            yield return PressSkipUntilGone();
-            if (!ComponentHelper.IsMacroRunning) break;
-
-            // ⑤ SetResult 대기
-            ResultReceived = false;
-            yield return WaitForResult(resultWait);
-
-            // ⑥ 조건 판정
-            if (LastConditionMet)
+            while (ComponentHelper.IsMacroRunning)
             {
-                Plugin.Log.LogInfo("[GachaMacro] 조건 충족! 자동뽑기 종료");
-                ComponentHelper.IsMacroRunning = false;
-                break;
+                // ① Button - Redraw 활성화 대기
+                yield return WaitUntilActive(RedrawBtnFullPath);
+                if (!ComponentHelper.IsMacroRunning) break;
+
+                // ② Button - Redraw 클릭 (다시뽑기)
+                UIHelper.TryInvokeButton(RedrawBtnFullPath, "Button - Redraw");
+                yield return new WaitForSeconds(stepDelay);
+
+                // ③ GachaInfinitePopupUI YES 버튼 대기 및 클릭
+                yield return WaitUntilActive(YesBtnFullPath);
+                if (!ComponentHelper.IsMacroRunning) break;
+
+                UIHelper.TryInvokeButton(YesBtnFullPath, "Button - YES");
+                yield return new WaitForSeconds(stepDelay);
+
+                // ④ Skip 버튼 반복 클릭 (결과 애니메이션 스킵)
+                yield return PressSkipUntilGone();
+                if (!ComponentHelper.IsMacroRunning) break;
+
+                // ⑤ SetResult 대기
+                ResultReceived = false;
+                yield return WaitForResult(resultWait);
+
+                // ⑥ 조건 판정
+                if (LastConditionMet)
+                {
+                    Plugin.Log.LogInfo("[GachaMacro] 조건 충족! 자동뽑기 종료");
+                    break;
+                }
+
+                yield return new WaitForSeconds(stepDelay);
             }
-
-            yield return new WaitForSeconds(stepDelay);
         }
-
-        ComponentHelper.IsMacroRunning = false;
-        Plugin.Log.LogInfo("[GachaMacro] 루프 종료");
+        finally
+        {
+            ComponentHelper.IsMacroRunning = false;
+            Plugin.Log.LogInfo("[GachaMacro] 루프 종료");
+        }
     }
 
     // ── 헬퍼 코루틴 ──────────────────────────────────────────────────────────

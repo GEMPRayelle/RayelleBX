@@ -15,6 +15,7 @@
 
 using HarmonyLib;
 using RayelleBX.Helpers;
+using System;
 using TMPro;
 using UnityEngine;
 
@@ -27,37 +28,49 @@ public class SymbolRemovePatch
     // 어떤 몬스터가 제거됐는지 알 수 있지만, 현재는 전체 카운트만 사용한다.
     private static void Postfix(FieldMonsterController __instance)
     {
-        // 심볼 몬스터가 아니라면 카운터 갱신 불필요.
-        // 흡수 스킬 등으로 일반 몬스터가 제거될 때도 이 Postfix가 호출되며,
-        // 그 시점에 심볼 몬스터가 일시 비활성화 상태이면 GetSymbolCount() == 0이 되어
-        // UI가 잘못 삭제되는 버그를 방지한다.
-        if (__instance == null || __instance.gameObject == null) return;
-        if (!SymbolMonsterHelper.IsSymbolMonster(__instance.gameObject)) return;
-
-        int symbolCount = SymbolMonsterHelper.GetSymbolCount();
-        GameObject fieldReward = GameObject.Find("Singleton (DontDestroy)/AppManager/UI/GameFieldDefaultUI(Clone)/Parent/MapLayout/MapScaleParent/Layout - FieldReward");
-
-        if (fieldReward == null) return;
-
-        // 이 패치가 관리하는 아이템 슬롯
-        Transform item = fieldReward.transform.Find("Button - Item6");
-        if (item == null) return;
-
-        if (symbolCount > 0)
+        try
         {
-            // 심볼이 아직 남아 있으면 숫자만 바꾼다
-            Transform textTransform = item.Find("Text - Count");
-            if (textTransform != null)
+            // 심볼 몬스터가 아니라면 카운터 갱신 불필요.
+            // 흡수 스킬 등으로 일반 몬스터가 제거될 때도 이 Postfix가 호출되며,
+            // 그 시점에 심볼 몬스터가 일시 비활성화 상태이면 GetSymbolCount() == 0이 되어
+            // UI가 잘못 삭제되는 버그를 방지한다.
+            if (__instance == null || __instance.gameObject == null) return;
+            if (!SymbolMonsterHelper.IsSymbolMonster(__instance.gameObject)) return;
+            Plugin.Log.LogInfo($"[SymbolRemove] RemoveMonster — {__instance.gameObject.name}");
+
+            int symbolCount = SymbolMonsterHelper.GetSymbolCount();
+
+            // GameObject.Find 대신 GameFieldDefaultUIEnablePatch가 저장한 인스턴스로 탐색한다.
+            GameFieldDefaultUI fieldUI = GameFieldDefaultUIEnablePatch.ActiveFieldUI;
+            if (fieldUI == null) return;
+            GameObject fieldReward = fieldUI.transform.Find("Parent/MapLayout/MapScaleParent/Layout - FieldReward")?.gameObject;
+
+            if (fieldReward == null) return;
+
+            // 이 패치가 관리하는 아이템 슬롯
+            Transform item = fieldReward.transform.Find(GameFieldDefaultUIEnablePatch.ItemName);
+            if (item == null) return;
+
+            if (symbolCount > 0)
             {
-                TextMeshProUGUI tmp = textTransform.GetComponent<TextMeshProUGUI>();
-                if (tmp != null)
-                    tmp.text = symbolCount.ToString();
+                // 심볼이 아직 남아 있으면 숫자만 바꾼다
+                Transform textTransform = item.Find("Text - Count");
+                if (textTransform != null)
+                {
+                    TextMeshProUGUI tmp = textTransform.GetComponent<TextMeshProUGUI>();
+                    if (tmp != null)
+                        tmp.text = symbolCount.ToString();
+                }
+            }
+            else
+            {
+                // 심볼이 모두 제거됐으면 UI 아이템 자체를 없앤다
+                UnityEngine.Object.Destroy(item.gameObject);
             }
         }
-        else
+        catch (Exception e)
         {
-            // 심볼이 모두 제거됐으면 UI 아이템 자체를 없앤다
-            Object.Destroy(item.gameObject);
+            Plugin.Log.LogError($"[SymbolRemove] Postfix 예외:\n{e}");
         }
     }
 

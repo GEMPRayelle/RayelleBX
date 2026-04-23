@@ -378,6 +378,7 @@ private static void TryPatch(Harmony harmony, Type targetType, string methodName
 
 | 날짜 | fontName 필드 | fontMaterial 필드 | apply 메서드 |
 |------|--------------|-------------------|-------------|
+| 2026-04-23 | `ὩὠὮὮὢὮὭὤὡὥὧ` | `ὦὫὭὥὢὠὮὭὩὦὯ` | `ὢὫὨὪὮὤὧὭὤὥὡ` |
 | 2026-04-11 | `ὡὥὢὬὡὭὯὭὥὦὢ` | `ὮὯὡὨὬὯὭὬὯὫὫ` | `ὤὮὫὯὦὭὥὦὫὩὢ` |
 | (이전) | `ὠὣὪὥὩὯὩὠὤὢὫ` | `ὧὬὤὧὥὪὭὮὡὪὨ` | `ὢὡὨὧὧὤὥὤὢὢὣ` |
 
@@ -385,4 +386,5 @@ private static void TryPatch(Harmony harmony, Type targetType, string methodName
 
 | 날짜 | 코스튬 데이터 필드 | CostumeID 프로퍼티 |
 |------|--------------------|-------------------|
+| 2026-04-23 | `ὥὪὩὢὣὯὩὨὮὫὢ` (타입: `CostumeDBInfo`, protobuf) | `Id` (비난독화) |
 | 2026-04-11 | `ὩὠὬὣὥὮὦὢὩὧὭ` | `ὪὫὫὢὩὦὤὪὧὫὡ` |

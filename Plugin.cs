@@ -70,6 +70,8 @@ public class Plugin : BaseUnityPlugin
             GachaMacroUIEnablePatch.ApplyPatches(_harmony);
 
         Log.LogInfo("Harmony Patch Complete");
+
+        DiagnosticHelper.RunStartupDiagnostics();
     }
 
     /// <summary>
@@ -84,7 +86,7 @@ public class Plugin : BaseUnityPlugin
         }
         catch (Exception e)
         {
-            Log.LogError($"[Plugin] PatchAll 실패: {patchClass.Name} — {e.Message}");
+            Log.LogError($"[Plugin] PatchAll 실패: {patchClass.Name}\n{e}");
         }
     }
 }

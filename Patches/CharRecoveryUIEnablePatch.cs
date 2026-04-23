@@ -26,6 +26,7 @@
 
 using HarmonyLib;
 using RayelleBX.Helpers;
+using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -40,18 +41,25 @@ public class CharRecoveryUIEnablePatch
     // __instance : 패치된 CharRecoveryUI 인스턴스
     private static void Postfix(CharRecoveryUI __instance)
     {
-        // 복제 원본으로 쓸 Auto 버튼 — 없으면 UI 구조가 바뀐 것이므로 종료
-        GameObject recoveryButton = UIHelper.FindOrLog(
-            "Singleton (DontDestroy)/AppManager/UI/CharUI(Clone)/UIRoot/Mask/Tab - 4 - Recovery/Object - Button/Button - Auto",
-            "recoveryButton");
-        if (recoveryButton == null) return;
+        try
+        {
+            // 복제 원본으로 쓸 Auto 버튼 — 없으면 UI 구조가 바뀐 것이므로 종료
+            GameObject recoveryButton = UIHelper.FindOrLog(
+                "Singleton (DontDestroy)/AppManager/UI/CharUI(Clone)/UIRoot/Mask/Tab - 4 - Recovery/Object - Button/Button - Auto",
+                "recoveryButton");
+            if (recoveryButton == null) return;
 
-        Transform parent = recoveryButton.transform.parent;
-        // 이미 매크로 버튼이 있으면 중복 생성 방지
-        if (MacroButtonAlreadyExists(parent)) return;
+            Transform parent = recoveryButton.transform.parent;
+            // 이미 매크로 버튼이 있으면 중복 생성 방지
+            if (MacroButtonAlreadyExists(parent)) return;
 
-        SetupLayoutGroup(parent);
-        CreateMacroButton(recoveryButton, __instance);
+            SetupLayoutGroup(parent);
+            CreateMacroButton(recoveryButton, __instance);
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogError($"[CharRecoveryUI] Postfix 예외:\n{e}");
+        }
     }
 
     private static bool MacroButtonAlreadyExists(Transform parent)
@@ -76,7 +84,7 @@ public class CharRecoveryUIEnablePatch
     private static void CreateMacroButton(GameObject original, CharRecoveryUI instance)
     {
         // Auto 버튼을 복제 — 크기·스타일을 그대로 상속받는다
-        GameObject buttonObj = Object.Instantiate(original, original.transform.parent);
+        GameObject buttonObj = UnityEngine.Object.Instantiate(original, original.transform.parent);
         buttonObj.name = "Button - Macro";
         SetButtonLabel(buttonObj, "자동 먹이기");
         BindMacroButtonClick(buttonObj, instance);
@@ -140,6 +148,8 @@ public class CharRecoveryUIEnablePatch
         bool ShouldContinue() =>
             ComponentHelper.IsMacroRunning && instance != null;
 
+        try
+        {
         while (ShouldContinue())
         {
             // 사이클 시작 시점에는 반드시 회복 탭이 열려 있어야 한다.
@@ -187,9 +197,13 @@ public class CharRecoveryUIEnablePatch
             if (!ShouldContinue() || !StepClickEat()) break;
             yield return new WaitForSeconds(0.5f);
         }
-        ComponentHelper.IsMacroRunning = false;
-        if (instance != null)
-            instance.transform.Find("MacroOverlay")?.gameObject.SetActive(false);
+        }
+        finally
+        {
+            ComponentHelper.IsMacroRunning = false;
+            if (instance != null)
+                instance.transform.Find("MacroOverlay")?.gameObject.SetActive(false);
+        }
     }
 
     /// <summary>

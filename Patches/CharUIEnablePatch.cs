@@ -23,6 +23,7 @@
 using HarmonyLib;
 using RayelleBX.Config;
 using System;
+using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
@@ -61,18 +62,14 @@ public class CharUIEnablePatch
             CharCostumeUI costumeUI = costumeTab?.GetComponent<CharCostumeUI>();
             if (costumeUI == null) return;
 
-            // 난독화 필드: CharCostumeUI 내부의 코스튬 데이터 객체
-            // 이름이 변경되면 null이 반환되고 아래 null 체크에서 조용히 종료
+            // costumeData 필드 (v2026-04-23: CostumeDBInfo 타입)
             object costumeData = typeof(CharCostumeUI)
-                .GetField("ὩὠὬὣὥὮὦὢὩὧὭ", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetField("ὥὪὩὢὣὯὩὨὮὫὢ", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?.GetValue(costumeUI);
             if (costumeData == null) return;
 
-            // 난독화 프로퍼티: 코스튬 데이터 객체에서 CostumeID를 꺼낸다
-            // Public + NonPublic 모두 시도 — 접근 제한자가 버전마다 다를 수 있음
-            object costumeId = costumeData.GetType()
-                .GetProperty("ὪὫὫὢὩὦὤὪὧὫὡ", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-                ?.GetValue(costumeData);
+            // CostumeID 프로퍼티 탐색 — 이전 난독화 이름 → 일반 이름 → int 프로퍼티 순서로 시도
+            object costumeId = FindCostumeId(costumeData);
 
             // 코스튬 탭의 TMP 텍스트에서 캐릭터명과 코스튬명을 읽는다
             // null 병합 연산자로 TMP 컴포넌트가 없거나 텍스트가 비어있는 경우를 처리
@@ -91,5 +88,32 @@ public class CharUIEnablePatch
             // 난독화 이름 변경 등으로 리플렉션이 실패해도 크래시 없이 로그만 출력
             Plugin.Log.LogInfo($"Exception in CharUIEnablePatch:\n{ex}");
         }
+    }
+
+    // CostumeID를 costumeData 객체에서 추출한다.
+    // 이전 난독화 이름 → 일반 이름 후보 → int 타입 첫 번째 프로퍼티 순서로 폴백한다.
+    private static object FindCostumeId(object costumeData)
+    {
+        const BindingFlags bf = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+        Type t = costumeData.GetType();
+
+        string[] candidates = { "ὪὫὫὢὩὦὤὪὧὫὡ", "CostumeId", "CostumeID", "costumeId", "ID", "Id", "id" };
+        foreach (string name in candidates)
+        {
+            PropertyInfo pi = t.GetProperty(name, bf);
+            if (pi != null) return pi.GetValue(costumeData);
+        }
+
+        // 마지막 수단: int 타입 프로퍼티 중 첫 번째
+        PropertyInfo fallback = t.GetProperties(bf).FirstOrDefault(p => p.PropertyType == typeof(int));
+        if (fallback != null)
+        {
+            Plugin.Log.LogWarning($"[CharUIEnablePatch] CostumeID 프로퍼티를 못 찾아 폴백 사용: {fallback.Name}");
+            return fallback.GetValue(costumeData);
+        }
+
+        Plugin.Log.LogWarning($"[CharUIEnablePatch] CostumeID 프로퍼티 없음 — {t.Name} 프로퍼티: " +
+            string.Join(", ", t.GetProperties(bf).Select(p => $"{p.Name}:{p.PropertyType.Name}")));
+        return null;
     }
 }

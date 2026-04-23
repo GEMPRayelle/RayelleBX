@@ -61,8 +61,8 @@ Postfix 파라미터 규칙:
 
 `Assembly-CSharp.dll`은 난독화되어 있어 메서드/필드명이 게임 업데이트마다 변경된다.
 
-- **FontLocalizer 필드** (v2026-04-11 기준): `ὡὥὢὬὡὭὯὭὥὦὢ` (fontName), `ὮὯὡὨὬὯὭὬὯὫὫ` (fontMaterial), apply메서드: `ὤὮὫὯὦὭὥὦὫὩὢ` — 탐색 방법은 `Docs/FontLocalizerReverseEngineering.md` 참조
-- **CharCostumeUI 필드** (v2026-04-11 기준): 코스튬 데이터 필드 `ὩὠὬὣὥὮὦὢὩὧὭ`, CostumeID 프로퍼티 `ὪὫὫὢὩὦὤὪὧὫὡ`
+- **FontLocalizer 필드** (v2026-04-23 기준): `ὩὠὮὮὢὮὭὤὡὥὧ` (fontName), `ὦὫὭὥὢὠὮὭὩὦὯ` (fontMaterial), apply메서드: `ὢὫὨὪὮὤὧὭὤὥὡ` — 탐색 방법은 `Docs/FontLocalizerReverseEngineering.md` 참조
+- **CharCostumeUI 필드** (v2026-04-23 기준): 코스튬 데이터 필드 `ὥὪὩὢὣὯὩὨὮὫὢ` (타입: `CostumeDBInfo` protobuf), CostumeID 프로퍼티 `Id` (비난독화)
 - obfuscated 이름 탐색은 Mono.Cecil로 `Assembly-CSharp.dll` 분석 — `Docs/Maintenance.md` 참조
 
 ### 주요 기능

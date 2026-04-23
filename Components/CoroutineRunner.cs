@@ -12,11 +12,44 @@
 
 using RayelleBX.Helpers;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace RayelleBX.Components;
 
 public class CoroutineRunner : MonoBehaviour
 {
+    private void OnEnable()
+    {
+        SceneManager.activeSceneChanged += OnActiveSceneChanged;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.activeSceneChanged -= OnActiveSceneChanged;
+    }
+
+    // 씬 전환 시 매크로가 실행 중이면 즉시 모든 코루틴을 중단하고 오버레이를 정리한다.
+    // 씬 전환 도중 버튼 클릭이 게임 상태 머신을 잘못된 경로로 밀어넣어 필드/로비 UI가
+    // 동시에 활성화되는 크래시를 방지하기 위함이다.
+    private void OnActiveSceneChanged(Scene prev, Scene next)
+    {
+        Plugin.Log.LogInfo($"[CoroutineRunner] 씬 전환: {prev.name} → {next.name}");
+        if (!ComponentHelper.IsMacroRunning) return;
+        Plugin.Log.LogInfo("[CoroutineRunner] 매크로 실행 중 — 강제 중단");
+        StopAllCoroutines();
+        ComponentHelper.IsMacroRunning = false;
+        HideAllMacroOverlays();
+    }
+
+    private static void HideAllMacroOverlays()
+    {
+        foreach (Transform t in Resources.FindObjectsOfTypeAll<Transform>())
+        {
+            if (t != null && t.name == "MacroOverlay")
+                t.gameObject.SetActive(false);
+        }
+    }
+
     private void Update()
     {
         // 매크로 실행 중일 때만 중단 키를 감지한다 (불필요한 조건 분기 최소화)

@@ -11,6 +11,8 @@
 // 리플렉션으로 접근하며, 게임 업데이트 시 이름이 바뀌면 Warning만 출력하고 폴백(기본 폰트)한다.
 // 현재 기준 필드명은 CLAUDE.md의 "FontLocalizer 필드" 항목을 참조.
 
+using System;
+using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
@@ -41,20 +43,56 @@ public static class ComponentHelper
         if (fTextTarget != null) fTextTarget.SetValue(fontLocalizer, textTarget);
         else Plugin.Log.LogWarning("[ComponentHelper] FontLocalizer._textTarget 필드를 찾을 수 없음");
 
-        // 난독화된 fontName 필드 — 사용할 폰트 에셋 이름을 지정
-        FieldInfo fFontName = typeof(FontLocalizer).GetField("ὡὥὢὬὡὭὯὭὥὦὢ", BindingFlags.Instance | BindingFlags.NonPublic);
+        // 난독화된 fontName 필드 — 사용할 폰트 에셋 이름을 지정 (v2026-04-23)
+        FieldInfo fFontName = typeof(FontLocalizer).GetField("ὩὠὮὮὢὮὭὤὡὥὧ", BindingFlags.Instance | BindingFlags.NonPublic);
         if (fFontName != null) fFontName.SetValue(fontLocalizer, "SCDreamExtraBold");
         else Plugin.Log.LogWarning("[ComponentHelper] FontLocalizer fontName 필드를 찾을 수 없음");
 
-        // 난독화된 fontMaterial 필드 — 폰트에 적용할 머티리얼 이름을 지정
-        FieldInfo fFontMaterial = typeof(FontLocalizer).GetField("ὮὯὡὨὬὯὭὬὯὫὫ", BindingFlags.Instance | BindingFlags.NonPublic);
+        // 난독화된 fontMaterial 필드 — 폰트에 적용할 머티리얼 이름을 지정 (v2026-04-23)
+        FieldInfo fFontMaterial = typeof(FontLocalizer).GetField("ὦὫὭὥὢὠὮὭὩὦὯ", BindingFlags.Instance | BindingFlags.NonPublic);
         if (fFontMaterial != null) fFontMaterial.SetValue(fontLocalizer, "SCDreamExtraBold Material");
         else Plugin.Log.LogWarning("[ComponentHelper] FontLocalizer fontMaterial 필드를 찾을 수 없음");
 
-        // 난독화된 apply 메서드 — 위에서 설정한 폰트를 실제로 TextMeshProUGUI에 적용
-        MethodInfo mApply = typeof(FontLocalizer).GetMethod("ὤὮὫὯὦὭὥὦὫὩὢ", BindingFlags.Instance | BindingFlags.NonPublic);
+        // apply 메서드 — void, 파라미터 없음, FontLocalizer 선언, 난독화 이름으로 자동 탐색
+        MethodInfo mApply = FindFontLocalizerApplyMethod();
         if (mApply != null) mApply.Invoke(fontLocalizer, null);
         else Plugin.Log.LogWarning("[ComponentHelper] FontLocalizer apply 메서드를 찾을 수 없음");
+    }
+
+    // FontLocalizer apply 메서드 탐색.
+    // apply 메서드: _textTarget + fontName + fontMaterial → 외부 유틸 호출 → ret
+    // 하드코딩 이름이 없으면 void/파라미터 없음/선언 타입/비ASCII 조건으로 자동 탐색한다.
+    private static MethodInfo FindFontLocalizerApplyMethod()
+    {
+        const BindingFlags bf = BindingFlags.Instance | BindingFlags.NonPublic;
+
+        // 현재 알려진 apply 메서드 이름 (v2026-04-23)
+        MethodInfo m = typeof(FontLocalizer).GetMethod("ὢὫὨὪὮὤὧὭὤὥὡ", bf);
+        if (m != null) return m;
+
+        // 폴백: void, 파라미터 없음, FontLocalizer 직접 선언, 난독화 이름
+        var candidates = typeof(FontLocalizer).GetMethods(bf)
+            .Where(x =>
+                x.DeclaringType == typeof(FontLocalizer) &&
+                x.ReturnType == typeof(void) &&
+                x.GetParameters().Length == 0 &&
+                !x.IsSpecialName &&
+                x.Name.Any(c => c > 127))
+            .ToList();
+
+        if (candidates.Count == 1)
+        {
+            Plugin.Log.LogInfo($"[ComponentHelper] FontLocalizer apply 자동 발견: {candidates[0].Name}");
+            return candidates[0];
+        }
+        if (candidates.Count > 1)
+        {
+            Plugin.Log.LogWarning(
+                $"[ComponentHelper] FontLocalizer apply 후보 {candidates.Count}개, 첫 번째 사용: " +
+                string.Join(", ", candidates.Select(x => x.Name)));
+            return candidates[0];
+        }
+        return null;
     }
 
     /// <summary>
@@ -132,14 +170,21 @@ public static class ComponentHelper
         stopGo.AddComponent<Image>().color = new Color(1f, 0f, 0f, 0.8f);
         stopGo.AddComponent<Button>().onClick.AddListener((UnityAction)(() =>
         {
-            Plugin.Log.LogInfo("Macro stopped");
-            // 이 오버레이 자신을 숨긴다 (클로저로 overlay 직접 참조)
-            overlay.SetActive(false);
-            // BalloonScriptUI 오버레이도 함께 숨긴다 (QuickMenu 매크로 보조 오버레이)
-            GameObject.Find("Singleton (DontDestroy)/AppManager/UI/BalloonScriptUI(Clone)")
-                ?.transform.Find("MacroOverlay")?.gameObject.SetActive(false);
-            // 플래그를 false로 → 각 코루틴의 while(IsMacroRunning) 조건이 false가 되어 종료
-            IsMacroRunning = false;
+            try
+            {
+                Plugin.Log.LogInfo("Macro stopped");
+                if (overlay != null) overlay.SetActive(false);
+                GameObject.Find("Singleton (DontDestroy)/AppManager/UI/BalloonScriptUI(Clone)")
+                    ?.transform.Find("MacroOverlay")?.gameObject.SetActive(false);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"[ComponentHelper] Overlay 종료 예외:\n{e}");
+            }
+            finally
+            {
+                IsMacroRunning = false;
+            }
         }));
 
         GameObject stopTextGo = new GameObject("StopButtonText");
