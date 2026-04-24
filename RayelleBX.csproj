@@ -60,10 +60,6 @@
       <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEngine.ImageConversionModule">
-      <HintPath>$(ManagedDir)\UnityEngine.ImageConversionModule.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
     <Reference Include="UnityEngine.InputLegacyModule">
       <HintPath>$(ManagedDir)\UnityEngine.InputLegacyModule.dll</HintPath>
       <Private>false</Private>
@@ -99,12 +95,9 @@
     <Compile Include="Helpers\PluginConfig.cs" />
     <Compile Include="Helpers\UIHelper.cs" />
     <Compile Include="Helpers\CoroutineHelper.cs" />
-    <Compile Include="Helpers\SymbolMonsterHelper.cs" />
     <Compile Include="Components\CoroutineRunner.cs" />
     <Compile Include="Config\CostumeConfig.cs" />
     <Compile Include="Helpers\DiagnosticHelper.cs" />
-    <Compile Include="Patches\GameFieldDefaultUIEnablePatch.cs" />
-    <Compile Include="Patches\SymbolRemovePatch.cs" />
     <Compile Include="Patches\QuickMenuUIEnablePatch.cs" />
     <Compile Include="Patches\CharRecoveryUIEnablePatch.cs" />
     <Compile Include="Patches\CharUIEnablePatch.cs" />

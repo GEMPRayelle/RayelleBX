@@ -59,8 +59,6 @@ public static class DiagnosticHelper
     {
         // (타입명, 메서드명, 파라미터 타입 배열) — null이면 이름만으로 첫 번째 매치
         (string typeName, string methodName, Type[] parms)[] targets = {
-            ("GameFieldDefaultUI",     "LoadFieldComplete", null),
-            ("FieldMonsterController", "RemoveMonster",     null),
             ("QuickMenuUI",            "SetMenu",           null),
             ("CharRecoveryUI",         "SetUI",             null),
             ("CharUI",                 "ShowUI",            Array.Empty<Type>()),

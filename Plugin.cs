@@ -51,9 +51,6 @@ public class Plugin : BaseUnityPlugin
         // --- 패치 등록 ---
         // PatchAll은 대상 메서드를 찾지 못하면 예외를 던질 수 있다.
         // 각각 try-catch로 보호해 한 곳에서 실패해도 나머지 패치는 계속 등록된다.
-        TryPatchAll(_harmony, typeof(GameFieldDefaultUIEnablePatch));
-        TryPatchAll(_harmony, typeof(SymbolRemovePatch));
-
         if (PluginConfig.QuickMenuMacro)
             TryPatchAll(_harmony, typeof(QuickMenuUIEnablePatch));
 
