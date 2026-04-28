@@ -7,6 +7,7 @@
 // 3. 난독화 필드·메서드 존재 여부 — 없으면 현재 필드 전체 목록을 출력
 //
 // BepInEx 로그( BepInEx/LogOutput.log )에서 [Diagnostic] 태그로 검색하면 된다.
+// Warning 로그가 없으면 모든 패치 대상이 정상임.
 
 using System;
 using System.Linq;
@@ -140,13 +141,6 @@ public static class DiagnosticHelper
         {
             Plugin.Log.LogInfo(
                 $"[Diagnostic] OK: CharCostumeUI.costumeData (field) : {costumeDataField.FieldType.Name}");
-
-            // CostumeDBInfo의 프로퍼티 전체 목록 출력 — CostumeID 이름 특정에 사용
-            Type dataType = costumeDataField.FieldType;
-            string allProps = string.Join(", ",
-                dataType.GetProperties(all)
-                        .Select(p => $"{p.Name}:{p.PropertyType.Name}"));
-            Plugin.Log.LogInfo($"[Diagnostic] {dataType.Name} 프로퍼티 목록: [{allProps}]");
         }
     }
 

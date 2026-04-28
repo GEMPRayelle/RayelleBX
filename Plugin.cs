@@ -61,6 +61,7 @@ public class Plugin : BaseUnityPlugin
         {
             CostumeConfig.EnsureFile();
             CharUIEnablePatch.ApplyPatches(_harmony);
+            DeckMessagePatch.ApplyPatches(_harmony);
         }
 
         if (PluginConfig.InfiniteGachaMacro)

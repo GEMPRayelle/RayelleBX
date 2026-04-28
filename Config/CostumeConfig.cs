@@ -49,20 +49,61 @@ public static class CostumeConfig
     }
 
     /// <summary>
-    /// 코스튬 ID와 이름을 CSV에 한 줄 추가한다.
-    /// 중복 체크 없이 단순 append — 같은 코스튬을 여러 번 열면 여러 번 기록된다.
+    /// 코스튬 ID와 이름을 CSV에 기록한다 (upsert).
+    /// - ID 없음 → 새 줄 추가 (true)
+    /// - ID 있고 기존 이름이 빈 값 또는 "_?" 플레이스홀더이며 신규 이름이 실제 이름 → 해당 줄 업데이트 (true)
+    /// - 그 외(이미 실제 이름 보유 등) → 변경 없음 (false)
     /// </summary>
-    public static void AppendMapping(object costumeId, string costumeName)
+    public static bool AppendMapping(object costumeId, string costumeName)
     {
         try
         {
             EnsureFile();
-            string line = $"{costumeId},{costumeName}";
-            File.AppendAllText(CsvFilePath, line + Environment.NewLine, Encoding.UTF8);
+
+            if (!(costumeId is int id))
+            {
+                if (!int.TryParse(costumeId?.ToString(), out id)) return false;
+            }
+
+            string[] lines = File.ReadAllLines(CsvFilePath, Encoding.UTF8);
+            int existingIndex = -1;
+            string existingName = null;
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (string.IsNullOrWhiteSpace(lines[i]) || lines[i].StartsWith("CostumeID")) continue;
+                string[] parts = lines[i].Split(new char[] { ',' }, 2);
+                if (parts.Length >= 1 && int.TryParse(parts[0], out int rowId) && rowId == id)
+                {
+                    existingIndex = i;
+                    existingName = parts.Length >= 2 ? parts[1] : "";
+                    break;
+                }
+            }
+
+            if (existingIndex == -1)
+            {
+                File.AppendAllText(CsvFilePath, $"{id},{costumeName}" + Environment.NewLine, Encoding.UTF8);
+                return true;
+            }
+
+            bool existingIsPlaceholder = string.IsNullOrEmpty(existingName) || existingName.EndsWith("_?");
+            bool newIsReal = !string.IsNullOrEmpty(costumeName) && !costumeName.EndsWith("_?");
+
+            if (existingIsPlaceholder && newIsReal)
+            {
+                lines[existingIndex] = $"{id},{costumeName}";
+                File.WriteAllLines(CsvFilePath, lines, Encoding.UTF8);
+                Plugin.Log.LogInfo($"[CostumeConfig] 이름 업데이트: {id}  {existingName} → {costumeName}");
+                return true;
+            }
+
+            return false;
         }
         catch (Exception ex)
         {
             Plugin.Log.LogError("Costume CSV 저장 실패: " + ex.Message);
+            return false;
         }
     }
 
